@@ -1,6 +1,7 @@
 #/usr/bin/python
-from ../wrapper import SpiderWrapper
-from ../config import ScrapyWrapperConfig
+# -*- coding:utf-8 -*-
+from scrapywrapper.wrapper import SpiderWrapper
+from scrapywrapper.config import ScrapyWrapperConfig
 
 class ScrapyConfig(ScrapyWrapperConfig):
 	def url_generator(self):
@@ -8,7 +9,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			yield 'http://db.yaozh.com/api/index.php/Home/index/yaopinzhongbiao/id/' + str(i)
 
 	#begin_urls = self.url_generator
-	begin_urls = ["http://db.yaozh.com/api/index.php/Home/index/yaopinzhongbiao/id/3542351"]
+	begin_urls = ["http://db.yaozh.com/api/index.php/Home/index/yaopinzhongbiao/id/3542343"]
 	steps = {
 		"begin": {
 			req: {
@@ -65,7 +66,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				selector_json: "data.me_first"
 			}, {
 				name: "BidProvinceID",
-				data_preprocessor: lambda province: province + '省',
+				data_preprocessor: lambda province: province + u'省',
 				reference: {
 					table: "TB_Addresses",
 					field: "BidProvince",

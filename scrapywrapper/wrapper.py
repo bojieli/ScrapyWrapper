@@ -1,7 +1,7 @@
 #!/usr/bin/python
+# -*- coding:utf-8 -*-
 import scrapy
 import pymssql
-import .config
 import uuid
 import re
 import json
@@ -13,6 +13,7 @@ import lxml
 import cssselect
 import html2text
 import htmlentities
+from config import ScrapyWrapperConfig
 
 class SpiderWrapper(scrapy.Spider):
 	config = ScrapyWrapperConfig()
@@ -53,7 +54,10 @@ class SpiderWrapper(scrapy.Spider):
 		if curr_step not in self.config.steps:
 			raise scrapy.exceptions.CloseSpider('undefined step ' + curr_step)
 		step_conf = self.config.steps[curr_step]
-		req_conf = step_conf.req if "req" in step_conf or {}
+		if "req" in step_conf:
+			req_conf = step_conf.req
+		else:
+			req_conf = {}
 		http_params = self._gen_http_params(url, req_conf, meta)
 
 		if http_params.method.lower() == 'post' and http_params.post_formdata:
@@ -174,6 +178,8 @@ class SpiderWrapper(scrapy.Spider):
 		return self._parse_and_mangle_text_response(response.body, res_conf, meta)
 
 	def _parse_record_field(self, res_conf, result, encoding='utf-8'):
+		if "value" in res_conf:
+			return res_conf.value # fixed value
 		try:
 			self._prepare_res_conf(res_conf)
 			if "selector_xpath" in res_conf:
@@ -194,7 +200,7 @@ class SpiderWrapper(scrapy.Spider):
 						next_objs = [ o[l] for o in next_objs if l in o ]
 				for o in next_objs:
 					if type(o) is str:
-						parsed = o
+						result = o
 						break
 			else: # plain text
 				pass
@@ -270,7 +276,7 @@ class SpiderWrapper(scrapy.Spider):
 		m = re.search('([0-9]*)-([0-9]*)-([0-9]*)', text)
 		if m:
 			return text
-		m = re.search('([0-9]*)年([0-9]*)月([0-9]*)日', text)
+		m = re.search(u'([0-9]*)年([0-9]*)月([0-9]*)日', text)
 		if m:
 			return m.group(1) + '-' + m.group(2) + '-' + m.group(3)
 		return None
@@ -380,7 +386,7 @@ class SpiderWrapper(scrapy.Spider):
 				file_ext = mimetypes.MimeTypes().types_map_inv[mimetype][0]
 		if file_ext:
 			filepath = file_dir + '/' + file_uuid + '.' + file_ext
-		else
+		else:
 			filepath = file_dir + '/' + file_uuid
 
 		if conf.type == "ftp":

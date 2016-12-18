@@ -1,4 +1,5 @@
 #?usr/bin/python
+# -*- coding:utf-8 -*-
 class ScrapyHelper():
 	def begin_url_range(self, prefix, suffix, from_id, to_id):
 		for url_id in range(from_id, to_id):

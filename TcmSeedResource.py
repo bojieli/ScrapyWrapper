@@ -1,6 +1,7 @@
 #/usr/bin/python
-from ../wrapper import SpiderWrapper
-from ../config import ScrapyWrapperConfig
+# -*- coding:utf-8 -*-
+from scrapywrapper.wrapper import SpiderWrapper
+from scrapywrapper.config import ScrapyWrapperConfig
 
 class ScrapyConfig(ScrapyWrapperConfig):
 	begin_urls = ["http://124.254.6.83:8088/querymain.asp"]

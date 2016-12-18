@@ -1,6 +1,7 @@
 #/usr/bin/python
-from ../wrapper import SpiderWrapper
-from ../config import ScrapyWrapperConfig
+# -*- coding:utf-8 -*-
+from scrapywrapper.wrapper import SpiderWrapper
+from scrapywrapper.config import ScrapyWrapperConfig
 
 class ScrapyConfig(ScrapyWrapperConfig):
 	begin_urls = ["http://www.sda.gov.cn/WS01/CL1850/"]
