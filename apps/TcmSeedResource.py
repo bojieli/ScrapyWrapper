@@ -8,7 +8,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"begin": {
 			res: {
 				selector_css: 'a::attr(href)',
-				selector_regex: 'show.asp?.*',
+				selector_regex: '(show.asp?.*)',
 				next_step: 'content'
 			}
 		},
@@ -19,8 +19,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				next_step: 'db'
 			},
 			{
-				selector_css: 'a',
-				selector_regex: 'href="([^"]*)">下一页</a>',
+				selector_href_text: u'下一页',
 				next_step: 'content'
 			}]
 		},
