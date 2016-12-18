@@ -196,11 +196,49 @@ class SpiderWrapper(scrapy.Spider):
 
 		return result
 
+	def _parse_reference_field(self, res_conf, record):
+		remote_table = res_conf.reference.table
+		remote_field = res_conf.reference.remote_field
+		local_field = res_conf.name
+		local_data = record[res_conf.reference.field]
+		if local_data == '':
+			return False
+		match = res_conf.reference.match
+		if match == 'exact':
+			self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + remote_field + ' = %s', (local_data))
+		elif match == 'prefix':
+			self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + remote_field + ' LIKE %s', (local_data + '%'))
+		elif match == 'wildcard':
+			self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + remote_field + ' LIKE %s', ('%' + local_data + '%'))
+		elif match == 'lpm':
+			while local_data != '':
+				self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + remote_field + ' LIKE %s', (local_data + '%'))
+				row = cursor.fetchone()
+				if row:
+					record[local_field] = row['ID']
+					return True
+				else: # try with a shorter prefix
+					local_data = local_data[:-1]
+			return False
+
+		# for common cases
+		row = cursor.fetchone()
+		if row:
+			record[local_field] = row['ID']
+			return True
+		else:
+			return False
+
 	def _parse_db_record(self, conf, url, result, meta=None):
 		if "preprocessor" in conf and callable(conf.preprocessor):
 			(url, result, meta) = conf.preprocessor(url, result, meta)
+
+		reference_fields = []
 		record = {}
 		for res_conf in conf.fields:
+			if "reference" in res_conf:
+				reference_fields.append(res_conf)
+				continue
 			parsed = self._parse_record_field(res_conf, result)
 			if parsed == None and "required" in res_conf and res_conf.required:
 				print('Record parse error: required field ' + res_conf.name + ' does not exist')
@@ -212,6 +250,12 @@ class SpiderWrapper(scrapy.Spider):
 			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
 				parsed = res_conf.data_postprocessor(parsed)
 			record[res_conf.name] = parsed
+
+		for res_conf in reference_fields:
+			status = _parse_reference_field(res_conf, record)
+			if status == False and "required" in res_conf and res_conf.required:
+				print('Record parse error: required reference field ' + res_conf.name + ' not matched')
+				return
 
 		if "postprocessor" in conf and callable(conf.postprocessor):
 			record = conf.postprocessor(record)
