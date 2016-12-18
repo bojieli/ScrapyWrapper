@@ -69,7 +69,7 @@ class SpiderWrapper(scrapy.Spider):
 			raise "Only mssql is supported!"
 		self.dbconn = pymssql.connect(self.config.db_server, self.config.db_user, self.config.db_password, self.config.db_name, charset="utf8")
 		self.cursor = self.dbconn.cursor(as_dict=True)
-		self.db_column_types = self._get_db_columns(self.config)
+		#self.db_column_types = self._get_db_columns(self.config.table_name)
 
 	def _get_db_columns(self, table_name):
 		self.cursor.execute('SP_COLUMNS ' + tablename)
@@ -98,6 +98,22 @@ class SpiderWrapper(scrapy.Spider):
 		if "selector_table_sibling" in res_conf:
 			res_conf.selector_xpath = '//td/descendant-or-self::*[contains(text(), "' + res_conf.selector_sibling + '")]/ancestor-or-self::td/following-sibling::td'
 			del res_conf.selector_sibling
+
+		if "selector_table_next_row" in res_conf:
+			res_conf.selector_xpath = '//td/descendant-or-self::*[contains(text(), "' + res_conf.selector_sibling + '")]/ancestor-or-self::tr/following-sibling::tr/td'
+			del res_conf.selector_sibling
+
+		if "selector_href_text" in res_conf:
+			res_conf.selector_xpath = '//a[text()="' + res_conf.selector_href_text + '"]/@href'
+			del res_conf.selector_href_text
+
+		if "selector_href_contains" in res_conf:
+			res_conf.selector_xpath = '//a[contains(@href, "' + res_conf.selector_href_text + '")]/@href'
+			del res_conf.selector_href_text
+
+		if "selector_href_text_contains" in res_conf:
+			res_conf.selector_xpath = '//a[contains(text(), "' + res_conf.selector_href_text + '")]/@href'
+			del res_conf.selector_href_text
 		# in place modifications, no return
 
 	def _parse_text_response(self, response_text, res_conf, encoding='utf-8'):
@@ -203,7 +219,11 @@ class SpiderWrapper(scrapy.Spider):
 		local_data = record[res_conf.reference.field]
 		if local_data == '':
 			return False
-		match = res_conf.reference.match
+		if "match" not in res_conf.reference:
+			match = "exact"
+		else:
+			match = res_conf.reference.match
+
 		if match == 'exact':
 			self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + remote_field + ' = %s', (local_data))
 		elif match == 'prefix':
@@ -229,6 +249,15 @@ class SpiderWrapper(scrapy.Spider):
 		else:
 			return False
 
+	def _parse_date(self, text):
+		m = re.search('([0-9]*)-([0-9]*)-([0-9]*)', text)
+		if m:
+			return text
+		m = re.search('([0-9]*)年([0-9]*)月([0-9]*)日', text)
+		if m:
+			return m.group(1) + '-' + m.group(2) + '-' + m.group(3)
+		return None
+
 	def _parse_db_record(self, conf, url, result, meta=None):
 		if "preprocessor" in conf and callable(conf.preprocessor):
 			(url, result, meta) = conf.preprocessor(url, result, meta)
@@ -245,8 +274,11 @@ class SpiderWrapper(scrapy.Spider):
 				return
 			if "data_validator" in res_conf and callable(res_conf.data_validator):
 				if not res_conf.data_validator(parsed):
-				print('Record parse error: field ' + res_conf.name + ' failed data validator (value "' + parsed + '")')
+					print('Record parse error: field ' + res_conf.name + ' failed data validator (value "' + parsed + '")')
 					return
+			if "data_type" in res_conf:
+				if res_conf.data_type == "Date":
+					parsed = self._parse_date(parsed)
 			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
 				parsed = res_conf.data_postprocessor(parsed)
 			record[res_conf.name] = parsed
@@ -259,6 +291,11 @@ class SpiderWrapper(scrapy.Spider):
 
 		if "postprocessor" in conf and callable(conf.postprocessor):
 			record = conf.postprocessor(record)
+		for res_conf in conf.fields:
+			if res_conf.name in record and record[res_conf.name] is None:
+				del record[res_conf.name]
+			if "skip" in res_conf and res_conf.skip:
+				del record[res_conf.name]
 		data_guid = self._insert_db_record(conf, url, record)
 
 		results = []
