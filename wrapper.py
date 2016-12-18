@@ -213,33 +213,50 @@ class SpiderWrapper(scrapy.Spider):
 		return result
 
 	def _parse_reference_field(self, res_conf, record):
-		remote_table = res_conf.reference.table
-		remote_field = res_conf.reference.remote_field
 		local_field = res_conf.name
-		local_data = record[res_conf.reference.field]
-		if local_data == '':
-			return False
+		remote_table = res_conf.reference.table
+		if "remote_field" in res_conf.reference:
+			remote_fields = [ res_conf.reference.remote_field ]
+		elif "remote_fields" in res_conf.reference:
+			remote_fields = res_conf.reference.remote_fields
+		else:
+			raise scrapy.exceptions.CloseSpider("unspecfied remote_field(s) in reference field " + res_conf.name)
+		if "field" in res_conf.reference:
+			local_data = record[res_conf.reference.field]
+			if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
+				local_data = res_conf.data_preprocessor(local_data)
+			local_data = [ local_data ]
+		elif "fields" in res_conf.reference:
+			local_data = [ record[f] for f in res_conf.reference.fields ]
+			if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
+				local_data = res_conf.data_preprocessor(local_data)
+		else:
+			raise scrapy.exceptions.CloseSpider("unspecfied local field(s) in reference field " + res_conf.name)
+
+
 		if "match" not in res_conf.reference:
 			match = "exact"
 		else:
 			match = res_conf.reference.match
 
 		if match == 'exact':
-			self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + remote_field + ' = %s', (local_data))
+			self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' = %s' for r in remote_fields ]), tuple(local_data))
 		elif match == 'prefix':
-			self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + remote_field + ' LIKE %s', (local_data + '%'))
+			self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]), tuple([ d + '%' for d in local_data ]))
 		elif match == 'wildcard':
-			self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + remote_field + ' LIKE %s', ('%' + local_data + '%'))
+			self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]) + ' LIKE %s', tuple([ '%' + d + '%' for d in local_data]))
 		elif match == 'lpm':
-			while local_data != '':
-				self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + remote_field + ' LIKE %s', (local_data + '%'))
+			while local_data[0] != '':
+				self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]), tuple([ d + '%' for d in local_data ]))
 				row = cursor.fetchone()
 				if row:
 					record[local_field] = row['ID']
 					return True
 				else: # try with a shorter prefix
-					local_data = local_data[:-1]
+					local_data = [ d[:-1] for d in local_data ]
 			return False
+		else:
+			raise scrapy.exceptions.CloseSpider("unknown match type " + match + " in reference field " + res_conf.name)
 
 		# for common cases
 		row = cursor.fetchone()
@@ -269,6 +286,8 @@ class SpiderWrapper(scrapy.Spider):
 				reference_fields.append(res_conf)
 				continue
 			parsed = self._parse_record_field(res_conf, result)
+			if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
+				parsed = res_conf.data_preprocessor(parsed)
 			if parsed == None and "required" in res_conf and res_conf.required:
 				print('Record parse error: required field ' + res_conf.name + ' does not exist')
 				return
