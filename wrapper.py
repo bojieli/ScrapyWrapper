@@ -9,6 +9,7 @@ import sys
 from ftplib import FTP
 import tempfile
 import mimetypes
+import html2text
 
 class SpiderWrapper(scrapy.Spider):
 	config = ScrapyWrapperConfig()
@@ -74,21 +75,25 @@ class SpiderWrapper(scrapy.Spider):
 			cols[row['COLUMN_NAME']] = row['TYPE_NAME']
 		return cols
 
+	def _strip_tags(self, res_conf, text):
+		if "keep_html_tags" in res_conf and res_conf.keep_html_tags:
+			return text.strip()
+		convertor = html2text.HTML2Text()
+		convertor.ignore_links = True
+		return convertor.handle(text).strip()
+
 	def _parse_text_response(self, response_text, res_conf, encoding='utf-8'):
 		results = []
 
 		try:
-			if "selector_regex" in res_conf:
-				for m in re.finditer(res_conf.selector_regex, response_text):
-					results.append(m.group(0))
-			elif "selector_css" in res_conf:
+			if "selector_css" in res_conf:
 				response = scrapy.http.HtmlResponse(url=None, text=response_text, encoding=encoding)
 				for m in response.css(res_conf.selector_css):
-					results.append(m.extract_first().strip())
+					results.append(self._strip_tags(res_conf, m.extract_first()))
 			elif "selector_xpath" in res_conf:
 				response = scrapy.http.HtmlResponse(url=None, text=response_text, encoding=encoding)
 				for m in response.xpath(res_conf.selector_xpath):
-					results.append(m.extract_first().strip())
+					results.append(self._strip_tags(res_conf, m.extract_first().strip()))
 			elif "selector_json" in res_conf:
 				obj = json.loads(response_text)
 				levels = res_conf.selector_json.split('.')
@@ -101,6 +106,14 @@ class SpiderWrapper(scrapy.Spider):
 				results = [ o for o in next_objs if type(o) is str ]
 			else: # plain text
 				results = [ response_text ]
+
+			# regex can be after other selectors
+			if "selector_regex" in res_conf:
+				regex_results = []
+				for text in results:
+					for m in re.finditer(res_conf.selector_regex, text):
+						regex_results.append(m.group(1))
+				results = regex_results
 		except:
 			e = sys.exc_info()
 			print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
@@ -130,18 +143,13 @@ class SpiderWrapper(scrapy.Spider):
 		return self._parse_and_mangle_text_response(response.body, res_conf, meta)
 
 	def _parse_record_field(self, res_conf, result, encoding='utf-8'):
-		parsed = None
 		try:
-			if "selector_regex" in res_conf:
-				m = re.search(res_conf.selector_regex, result)
-				if m:
-					parsed = m.group(0)
-			elif "selector_css" in res_conf:
+			if "selector_css" in res_conf:
 				response = scrapy.http.HtmlResponse(url=None, text=result, encoding=encoding)
-				parsed = response.css(res_conf.selector_css).extract_first().strip()
+				result = self._strip_tags(res_conf, response.css(res_conf.selector_css).extract_first())
 			elif "selector_xpath" in res_conf:
 				response = scrapy.http.HtmlResponse(url=None, text=result, encoding=encoding)
-				parsed = response.xpath(res_conf.selector_xpath).extract_first().strip()
+				result = self._strip_tags(res_conf, response.xpath(res_conf.selector_xpath).extract_first())
 			elif "selector_json" in res_conf:
 				obj = json.loads(result)
 				levels = res_conf.selector_json.split('.')
@@ -156,14 +164,20 @@ class SpiderWrapper(scrapy.Spider):
 						parsed = o
 						break
 			else: # plain text
-				parsed = result
+				pass
+
+			# regex can be after other types of selectors
+			if "selector_regex" in res_conf:
+				m = re.search(res_conf.selector_regex, result)
+				if m:
+					result = m.group(1)
 		except:
 			e = sys.exc_info()
 			print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
 			print('    while parsing response for url ' + response.url + ' (response ' + len(response.body) + ' bytes)')
 			traceback.print_tb(e[2])
 
-		return parsed
+		return result
 
 	def _parse_db_record(self, conf, url, result, meta=None):
 		if "preprocessor" in conf and callable(conf.preprocessor):
