@@ -9,7 +9,10 @@ import sys
 from ftplib import FTP
 import tempfile
 import mimetypes
+import lxml
+import cssselect
 import html2text
+import htmlentities
 
 class SpiderWrapper(scrapy.Spider):
 	config = ScrapyWrapperConfig()
@@ -80,20 +83,32 @@ class SpiderWrapper(scrapy.Spider):
 			return text.strip()
 		convertor = html2text.HTML2Text()
 		convertor.ignore_links = True
-		return convertor.handle(text).strip()
+		return htmlentities.decode(convertor.handle(text).strip())
+
+	def _prepare_res_conf(self, res_conf):
+		if "selector_css" in res_conf:
+			lxml_expr = cssselect.HTMLTranslator().css_to_xpath(res_conf.selector_css)
+			res_conf.selector_xpath = lxml_expr
+			del res_conf.selector_css
+
+		if "selector_contains" in res_conf:
+			res_conf.selector_xpath = '//*[contains(text(), "' + res_conf.selector_contains + '")]'
+			del res_conf.selector_contains
+
+		if "selector_table_sibling" in res_conf:
+			res_conf.selector_xpath = '//td/descendant-or-self::*[contains(text(), "' + res_conf.selector_sibling + '")]/ancestor-or-self::td/following-sibling::td'
+			del res_conf.selector_sibling
+		# in place modifications, no return
 
 	def _parse_text_response(self, response_text, res_conf, encoding='utf-8'):
 		results = []
 
 		try:
-			if "selector_css" in res_conf:
-				response = scrapy.http.HtmlResponse(url=None, text=response_text, encoding=encoding)
-				for m in response.css(res_conf.selector_css):
-					results.append(self._strip_tags(res_conf, m.extract_first()))
-			elif "selector_xpath" in res_conf:
-				response = scrapy.http.HtmlResponse(url=None, text=response_text, encoding=encoding)
-				for m in response.xpath(res_conf.selector_xpath):
-					results.append(self._strip_tags(res_conf, m.extract_first().strip()))
+			self._prepare_res_conf(res_conf)
+			if "selector_xpath" in res_conf:
+				doc = lxml.etree.fromstring(response_text)
+				for m in doc.xpath(res_conf.selector_xpath):
+					results.append(self._strip_tags(res_conf, lxml.etree.tostring(m)))
 			elif "selector_json" in res_conf:
 				obj = json.loads(response_text)
 				levels = res_conf.selector_json.split('.')
@@ -144,12 +159,14 @@ class SpiderWrapper(scrapy.Spider):
 
 	def _parse_record_field(self, res_conf, result, encoding='utf-8'):
 		try:
-			if "selector_css" in res_conf:
-				response = scrapy.http.HtmlResponse(url=None, text=result, encoding=encoding)
-				result = self._strip_tags(res_conf, response.css(res_conf.selector_css).extract_first())
-			elif "selector_xpath" in res_conf:
-				response = scrapy.http.HtmlResponse(url=None, text=result, encoding=encoding)
-				result = self._strip_tags(res_conf, response.xpath(res_conf.selector_xpath).extract_first())
+			self._prepare_res_conf(res_conf)
+			if "selector_xpath" in res_conf:
+				doc = lxml.etree.fromstring(response_text)
+				matches = doc.xpath(res_conf.selector_xpath)
+				if len(matches) == 0:
+					result = ""
+				else:
+					result = self._strip_tags(res_conf, lxml.etree.tostring(matches[0]))
 			elif "selector_json" in res_conf:
 				obj = json.loads(result)
 				levels = res_conf.selector_json.split('.')

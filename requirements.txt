@@ -2,3 +2,5 @@ scrapy
 scrapy-crawlera
 pymssql
 html2text
+lxml
+cssselect
