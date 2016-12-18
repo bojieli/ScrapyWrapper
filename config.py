@@ -19,6 +19,14 @@ class ScrapyWrapperConfig():
 		name: "DB_Medicine"
 	}
 
+	file_storage = {
+		type: "ftp",
+		server: "cy.zaixianshop.com",
+		user: "picuser",
+		password: "Ftp@*^#19",
+		basedir: ""
+	}
+
 	url_table = {
 		name: "OriginalWebUrl",
 		id_field: "ResID",
@@ -26,9 +34,7 @@ class ScrapyWrapperConfig():
 		time_field: "UpdateTime"
 	}
 
-	table_name = ""
-	guid_field = "ID"
-
+	default_guid_field = "ID"
 	check_url_exist_before_crawl = False
 	on_exist_update = True
 
@@ -36,7 +42,8 @@ class ScrapyWrapperConfig():
 	begin_urls = []
 	steps = {
 		"begin": {
-			"req": {
+			type: "http",
+			req: {
 				method: 'get', # or post
 				extra_headers: {},
 				cookies: {},
@@ -44,50 +51,67 @@ class ScrapyWrapperConfig():
 				post_formdata: None,
 				encoding: 'utf-8'
 			},
-			"res": {
-				type: 'html', # or json
+			res: {
 				selector_regex: "",
 				next_step: 'list'
 			}
 		},
 		"list": {
-			"req": {
+			type: "http",
+			req: {
 				method: 'get', # or post
 				extra_headers: {},
 				cookies: {},
 				post_rawdata: "",
 				post_formdata: None
 			},
-			"res": {
-				type: 'html', # or json
+			res: {
 				selector_regex: "",
 				next_step: 'content'
 			}
 		},
 		"content": {
-			"req": {
+			type: "http",
+			req: {
 				method: 'get', # or post
 				extra_headers: {},
 				cookies: {},
 				post_rawdata: "",
 				post_formdata: None
 			},
-			"res": {
-				type: 'html', # or json
+			res: {
 				selector_xpath: "",
-				next_step: 'end'
+				next_step: 'db'
 			}
+		},
+		"db": {
+			type: "db",
+			table_name: "",
+			guid_field: "ID",
+			preprocessor: None,
+			fields: [{
+				table_name: "",
+				guid_field: "ID",
+				name: "hello",
+				selector_xpath: "",
+				data_validator: None,
+				data_postprocessor: None,
+				required: True
+			}],
+			postprocessor: None,
+			res: {
+				selector_xpath: "",
+				data_postprocessor: None,
+				next_step: 'image'
+			}
+		},
+		"image": {
+			type: "file",
+			table_name: "PictureInfo",
+			guid_field: "ID",
+			path_field: "PicUrl",
+			info_id_field: "InfoID",
+			info_table_field: "InfoTable"
 		}
 	}
-
-	record_preprocessor: None,
-	record_fields = [{
-		name: "hello",
-		selector_xpath: "",
-		data_validator: None,
-		data_postprocessor: None,
-		required: True
-	}],
-	# before record is inserted into database
-	record_postprocessor = None
 

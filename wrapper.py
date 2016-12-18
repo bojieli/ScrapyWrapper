@@ -6,6 +6,9 @@ import uuid
 import re
 import json
 import sys
+from ftplib import FTP
+import tempfile
+import mimetypes
 
 class SpiderWrapper(scrapy.Spider):
 	config = ScrapyWrapperConfig()
@@ -50,11 +53,10 @@ class SpiderWrapper(scrapy.Spider):
 		http_params = self._gen_http_params(url, req_conf, meta)
 
 		if http_params.method.lower() == 'post' and http_params.post_formdata:
-			request = scrapy.FormRequest(url=http_params.url, method=http_params.method, headers=http_params.headers, formdata=http_params.post_formdata, cookies=http_params.cookies, encoding=http_params.encoding, callback=self.parse)
+			request = scrapy.FormRequest(url=http_params.url, method=http_params.method, headers=http_params.headers, formdata=http_params.post_formdata, cookies=http_params.cookies, encoding=http_params.encoding, callback=self._http_request_callback)
 		else:
-			request = scrapy.Request(url=http_params.url, method=http_params.method, headers=http_params.headers, body=http_params.post_rawdata, cookies=http_params.cookies, encoding=http_params.encoding, callback=self.parse)
-		request.meta['url'] = url
-		request.meta['step'] = curr_step
+			request = scrapy.Request(url=http_params.url, method=http_params.method, headers=http_params.headers, body=http_params.post_rawdata, cookies=http_params.cookies, encoding=http_params.encoding, callback=self._http_request_callback)
+		request.meta.step = curr_step
 		request.meta.meta = http_params.meta
 		return request
 
@@ -72,24 +74,23 @@ class SpiderWrapper(scrapy.Spider):
 			cols[row['COLUMN_NAME']] = row['TYPE_NAME']
 		return cols
 
-	def _parse_response(self, response, res_conf):
-		next_step = res_conf.next_step or 'end'
-		meta = res_conf.meta or response.meta.meta
+	def _parse_text_response(self, response_text, res_conf, encoding='utf-8'):
 		results = []
 
-		response_type = res_conf.type or 'html'
 		try:
 			if "selector_regex" in res_conf:
-				for m in re.finditer(res_conf.selector_regex, response.body):
+				for m in re.finditer(res_conf.selector_regex, response_text):
 					results.append(m.group(0))
 			elif "selector_css" in res_conf:
+				response = scrapy.http.HtmlResponse(url=None, text=response_text, encoding=encoding)
 				for m in response.css(res_conf.selector_css):
 					results.append(m.extract_first().strip())
 			elif "selector_xpath" in res_conf:
+				response = scrapy.http.HtmlResponse(url=None, text=response_text, encoding=encoding)
 				for m in response.xpath(res_conf.selector_xpath):
 					results.append(m.extract_first().strip())
 			elif "selector_json" in res_conf:
-				obj = json.loads(response.body)
+				obj = json.loads(response_text)
 				levels = res_conf.selector_json.split('.')
 				next_objs = [ obj ]
 				for l in levels:
@@ -97,17 +98,36 @@ class SpiderWrapper(scrapy.Spider):
 						next_objs = [ o.values() for o in next_objs ].flatten()
 					else:
 						next_objs = [ o[l] for o in next_objs if l in o ]
-				result = [ o for o in next_objs if type(o) is str ]
+				results = [ o for o in next_objs if type(o) is str ]
 			else: # plain text
-				result = [ response.body ]
+				results = [ response_text ]
 		except:
 			e = sys.exc_info()
 			print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
-			print('    while parsing response for url ' + response.url + ' (response ' + len(response.body) + ' bytes)')
+			print('    while parsing response for url ' + response.url + ' (response ' + len(response_text) + ' bytes)')
 			traceback.print_tb(e[2])
 
-		return [(result, next_step, meta) for result in results]
+		return results
 
+	def _mangle_text_results(self, text_results, res_conf, meta):
+		results = []
+		for text_result in text_results:
+			result = (text_result, res_conf.next_step, meta)
+			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
+				mangled = res_conf.data_postprocessor(result)
+				if mangled:
+					results.append(mangled)
+			else:
+				results.append(result)
+		return results
+
+	def _parse_and_mangle_text_response(self, text_response, res_conf, meta):
+		text_results = self._parse_text_response(response.body, res_conf)
+		return self._mangle_text_results(text_results, res_conf, meta)
+
+	def _parse_http_response(self, response, res_conf):
+		meta = res_conf.meta or response.meta.meta
+		return self._parse_and_mangle_text_response(response.body, res_conf, meta)
 
 	def _parse_record_field(self, res_conf, result, encoding='utf-8'):
 		parsed = None
@@ -143,80 +163,13 @@ class SpiderWrapper(scrapy.Spider):
 			print('    while parsing response for url ' + response.url + ' (response ' + len(response.body) + ' bytes)')
 			traceback.print_tb(e[2])
 
-		return [(result, next_step, meta) for result in results]
-
-	def _parse_record(self, url, result, meta=None):
-		if callable(self.config.record_preprocessor):
-			(url, result, meta) = self.config.record_preprocessor(url, result, meta)
-		record = {}
-		for res_conf in self.config.record_fields:
-			parsed = self._parse_record_field(res_conf, result)
-			if parsed == None and "required" in res_conf and res_conf.required:
-				print('Record parse error: required field ' + res_conf.name + ' does not exist')
-				return
-			if "data_validator" in res_conf and callable(res_conf.data_validator):
-				if not res_conf.data_validator(parsed):
-				print('Record parse error: field ' + res_conf.name + ' failed data validator (value "' + parsed + '")')
-					return
-			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
-				parsed = res_conf.data_postprocessor(parsed)
-			record[res_conf.name] = parsed
-
-		if "record_postprocessor" in self.config and callable(self.config.record_postprocessor):
-			record = self.config.record_postprocessor(record)
-		self.insert_record(record, url)
-
-	def parse(self, response):
-		step_conf = self.config.steps[response.meta['step']]
-		if "res" in step_conf:
-			if callable(step_conf.res):
-				results = step_conf.res(response)
-			else:
-				results = self._parse_response(response, step_conf.res)
-		else:
-			results = [ (response.body, 'end', response.meta.meta) ]
-
-		for result in results:
-			if len(result) < 2 or result[1] == "" or result[1] == 'end':
-				self._parse_record(*result)
-			else:
-				yield self._build_request(*result)
-
-	def insert_record(self, row, url):
-		# data tab;e
-		guid = self.insert_row(self.config.table_name, row)
-		# url table
-		url_row = {}
-		url_row[self.config.guid_field] = str(uuid.uuid4())
-		url_row[self.config.url_table_id_field] = guid
-		url_row[self.config.url_table_url_field] = url
-		url_row[self.config.url_table_time_field] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-		self.insert_row(self.config.url_table_name, url_row)
-
-
-	def insert_row(self, table_name, row):
-		guid = str(uuid.uuid4())
-		row[self.config.guid_field] = guid
-		fields = [k for k in row]
-		values = [v for v in row.values()]
-		self.insert_one_with_type(table_name, fields, values)
-		return guid
-
-	def insert_one(self, table_name, fields, values):
-
-			else:
-				parsed = result
-		except:
-			e = sys.exc_info()
-			print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
-			print('    while parsing record for url ' + url + ' (result ' + len(result) + ' bytes)')
 		return parsed
 
-	def _parse_record(self, url, result, meta=None):
-		if callable(self.config.record_preprocessor):
-			(url, result, meta) = self.config.record_preprocessor(url, result, meta)
+	def _parse_db_record(self, conf, url, result, meta=None):
+		if "preprocessor" in conf and callable(conf.preprocessor):
+			(url, result, meta) = conf.preprocessor(url, result, meta)
 		record = {}
-		for res_conf in self.config.record_fields:
+		for res_conf in conf.fields:
 			parsed = self._parse_record_field(res_conf, result)
 			if parsed == None and "required" in res_conf and res_conf.required:
 				print('Record parse error: required field ' + res_conf.name + ' does not exist')
@@ -229,49 +182,168 @@ class SpiderWrapper(scrapy.Spider):
 				parsed = res_conf.data_postprocessor(parsed)
 			record[res_conf.name] = parsed
 
-		if "record_postprocessor" in self.config and callable(self.config.record_postprocessor):
-			record = self.config.record_postprocessor(record)
-		self.insert_record(record, url)
+		if "postprocessor" in conf and callable(conf.postprocessor):
+			record = conf.postprocessor(record)
+		data_guid = self._insert_db_record(conf, url, record)
 
-	def parse(self, response):
+		results = []
+		if "res" in conf:
+			meta = {}
+			meta.info_id = guid
+			meta.info_table = conf.table_name
+			meta.record = conf.record
+			results = self._parse_and_mangle_text_response(result, conf.res, meta)
+		return results
+
+	def _ftp_mkdir_recursive(self, path):
+		sub_path = os.path.dirname(path)
+		# save pwd
+		pwd = self.ftp_conn.pwd()
+		try:
+			self.ftp_conn.cwd(sub_path)
+		except:
+			self._ftp_mkdir_recursive(sub_path)
+			self.ftp_conn.mkd(sub_path)
+		# restore pwd
+		self.ftp_conn.cwd(pwd)
+
+	def _save_file_to_ftp(self, filename, conf, data):
+		if "ftp_conn" not in self:
+			self.ftp_conn = FTP(self.config.file_storage.server,
+				self.config.file_storage.user,
+				self.config.file_storage.password)
+			if self.config.file_storage.basedir:
+				self.ftp_conn.mkd(self.config.file_storage.basedir)
+				self.ftp_conn.cwd(self.config.file_storage.basedir)
+
+		f = tempfile.NamedTemporaryFile()
+		f.write(data)
+		try:
+			self.ftp_conn.storbinary('STOR ' + filename, f.name)
+		except: # in case the diretory does not exist
+			self._ftp_mkdir_recursive(filename)
+			self.ftp_conn.storbinary('STOR ' + filename, f.name)
+		f.close()
+
+	def _local_mkdir_recursive(self, path):
+		sub_path = os.path.dirname(path)
+		if not os.path.exists(sub_path):
+			self._local_mkdir_recursive(sub_path)
+		if not os.path.exists(path):
+			os.mkdir(path)
+
+	def _save_file_to_local(self, filename, conf, data):
+		self._local_mkdir_recursive(filename)
+		f = open(filename, 'wb')
+		f.write(data)
+		f.close()
+
+	def _parse_file_record_callback(self, response):
+		conf = self.config.file_storage
+		file_uuid = str(uuid.uuid4())
+		file_dir = str(datetime.date.today().year) + '/' + str(datetime.date.today().month())
+		file_ext = None
+		if "Content-Type" in self.headers:
+			mimetype = str(self.headers["Content-Type"])
+			if mimetype in mimetypes.MimeTypes().types_map_inv:
+				file_ext = mimetypes.MimeTypes().types_map_inv[mimetype][0]
+		if file_ext:
+			filepath = file_dir + '/' + file_uuid + '.' + file_ext
+		else
+			filepath = file_dir + '/' + file_uuid
+
+		if conf.type == "ftp":
+			self._save_file_to_ftp(conf, filepath, response.body)
+		elif conf.type == "local":
+			self._save_file_to_local(conf, filepath, response.body)
+		else:
+			raise scrapy.exceptions.CloseSpider('undefined record type ' + conf.type)
+
+		db_conf = response.meta.conf
+		record = {}
+		record[db_conf.path_field] = filepath
+		record[db_conf.info_id_field] = response.meta.info_id
+		record[db_conf.info_table_field] = response.meta.info_table
+		self._insert_db_record(db_conf, response.url, record)
+
+		if "res" in response.meta.conf:
+			meta = record
+			meta.referer = response.url
+
+			res_conf = response.meta.conf.res
+			if type(res_conf) is list:
+				results = [ self._parse_and_mangle_text_response(response.body, one_conf, meta) for one_conf in res_conf ].flatten()
+			else:
+				results = self._parse_and_mangle_text_response(response.body, res_conf, meta)
+			for req in self._yield_requests_from_parse_results(results):
+				yield req
+
+
+	def _parse_file_record(self, conf, referer, url, meta):
+		req = scrapy.Request(url=url, callback=self._parse_file_record_callback)
+		req.meta.referer = referer
+		req.meta.conf = conf
+		req.meta.info_id = meta.info_id
+		req.meta.info_table = meta.info_table
+		return req
+
+	def _yield_requests_from_parse_results(self, results):
+		for result in results:
+			if len(result) < 2 or type(result[1]) is None or result[1] == 'end':
+				continue
+			if result[1] not in self.config.steps:
+				raise scrapy.exceptions.CloseSpider('undefined step ' + result[1])
+				continue
+			step_config = self.config.steps[result[1]]
+			if "type" not in step_config:
+				step_config.type = "http" # default
+
+			if step_config.type == "db":
+				results.extend(self._parse_db_record(step_config, *result))
+			elif step_config.type == "file":
+				yield self._parse_file_record(step_config, *result)
+			elif step.config.type == "http":
+				yield self._build_request(*result)
+			else:
+				raise scrapy.exceptions.CloseSpider('undefined step type ' + step.config.type)
+
+
+	def _http_request_callback(self, response):
 		step_conf = self.config.steps[response.meta['step']]
 		if "res" in step_conf:
 			if callable(step_conf.res):
 				results = step_conf.res(response)
+			elif type(step_conf.res) is list:
+				results = [ self._parse_http_response(response, res_conf) for res_conf in step_conf.res ].flatten()
 			else:
-				results = self._parse_response(response, step_conf.res)
+				results = self._parse_http_response(response, step_conf.res)
 		else:
-			results = [ (response.body, 'end', response.meta.meta) ]
+			results = [ (response.body, None, response.meta.meta) ]
 
-		for result in results:
-			if len(result) < 2 or result[1] == "" or result[1] == 'end':
-				self._parse_record(*result)
-			else:
-				yield self._build_request(*result)
+		for req in self._yield_requests_from_parse_results(results):
+			yield req
 
-	def insert_record(self, row, url):
+
+	def _insert_db_record(self, conf, url, row):
+		if "guid_field" not in conf:
+			conf.guid_field = self.config.default_guid_field
 		# data tab;e
-		guid = self.insert_row(self.config.table_name, row)
+		data_guid = str(uuid.uuid4())
+		row[conf.guid_field] = data_guid
+		self.insert_row(conf.table_name, row)
 		# url table
 		url_row = {}
-		url_row[self.config.guid_field] = str(uuid.uuid4())
-		url_row[self.config.url_table_id_field] = guid
-		url_row[self.config.url_table_url_field] = url
-		url_row[self.config.url_table_time_field] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-		self.insert_row(self.config.url_table_name, url_row)
-
+		url_row[conf.guid_field] = str(uuid.uuid4())
+		url_row[self.config.url_table.id_field] = data_guid
+		url_row[self.config.url_table.url_field] = url
+		url_row[self.config.url_table.time_field] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+		self.insert_row(self.config.url_table.name, url_row)
+		return data_guid
 
 	def insert_row(self, table_name, row):
-		guid = str(uuid.uuid4())
-		row[self.config.guid_field] = guid
 		fields = [k for k in row]
 		values = [v for v in row.values()]
 		self.insert_one_with_type(table_name, fields, values)
-		return guid
-
-	def insert_one(self, table_name, fields, values):
-		value_types = ['%s' for f in fields]
-		self.insert_one_with_type(table_name, fields, value_types, values)
 
 	def insert_many_with_type(self, table_name, fields, value_types, table_data):
 		self.cursor.execute("INSERT INTO " + table_name + " (" + ",".join(fields) + ") VALUES "
