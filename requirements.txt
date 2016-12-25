@@ -4,3 +4,4 @@ pymssql
 html2text
 lxml
 cssselect
+slimit

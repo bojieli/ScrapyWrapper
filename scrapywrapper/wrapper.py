@@ -14,6 +14,7 @@ import cssselect
 import html2text
 import htmlentities
 from config import ScrapyWrapperConfig
+from .helper import ScrapyHelper
 
 class SpiderWrapper(scrapy.Spider):
 	config = ScrapyWrapperConfig()
@@ -125,6 +126,14 @@ class SpiderWrapper(scrapy.Spider):
 
 		try:
 			self._prepare_res_conf(res_conf)
+			if "parser" in res_conf:
+				if res_conf.parser == "js-string":
+					from slimit import ast
+					from slimit.parser import Parser
+					from slimit.visitors import nodevisitor
+					tree = Parser().parse(response_text)
+					results = [ getattr(node, 'value') for node in nodevisitor.visit(tree) if isinstance(node, ast.String) ]
+					
 			if "selector_xpath" in res_conf:
 				doc = lxml.etree.fromstring(response_text)
 				for m in doc.xpath(res_conf.selector_xpath):
@@ -149,6 +158,9 @@ class SpiderWrapper(scrapy.Spider):
 					for m in re.finditer(res_conf.selector_regex, text):
 						regex_results.append(m.group(1))
 				results = regex_results
+
+			if "selector" in res_conf:
+				results = [ res_conf.selector(r) for r in results ]
 		except:
 			e = sys.exc_info()
 			print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
@@ -281,6 +293,13 @@ class SpiderWrapper(scrapy.Spider):
 			return m.group(1) + '-' + m.group(2) + '-' + m.group(3)
 		return None
 
+
+	def _parse_int(self, text):
+		try:
+			return int(text)
+		except:
+			return ScrapyWrapper().parse_chinese_int(text)
+
 	def _parse_db_record(self, conf, url, result, meta=None):
 		if "preprocessor" in conf and callable(conf.preprocessor):
 			(url, result, meta) = conf.preprocessor(url, result, meta)
@@ -304,6 +323,15 @@ class SpiderWrapper(scrapy.Spider):
 			if "data_type" in res_conf:
 				if res_conf.data_type == "Date":
 					parsed = self._parse_date(parsed)
+				elif res_conf.data_type == "float":
+					try:
+						parsed = float(parsed)
+					except:
+						parsed = self._parse_int(parsed)
+				elif res_conf.data_type == "int":
+					parsed = self._parse_int(parsed)
+				elif res_conf.data_type == "percentage":
+					parsed = float(parsed.strip('%') / 100)
 			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
 				parsed = res_conf.data_postprocessor(parsed)
 			record[res_conf.name] = parsed
