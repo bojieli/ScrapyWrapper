@@ -9,49 +9,65 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"begin": {
 			'res': {
 			    'parser': 'js-string',
-				'selector': lambda s: s.split(',')[1],
+				'selector': lambda s, meta: s.split(',')[1],
 				'next_step': 'list'
-			},
-			'fields': [{
-				'name': 'StockCode',
-				'skip': True
-			}]
+			}
 		},
 		"list": {
 			'req': {
 				'url': lambda url, meta: 'http://data.eastmoney.com/notices/stock/' + str(url) + '.html'
 			},
 			'res': {
-				'selector_css': '#dt_1 td a::href',
+				'selector_css': '#dt_1 tr',
+				'next_step': 'list_parse'
+			},
+			'fields': [{
+				'name': '$$StockCode'
+			}]
+		},
+		"list_parse": {
+			'type': 'intermediate',
+			'res': {
+				'selector_xpath': '//a/@href',
 				'next_step': 'content'
 			},
 			'fields': [{
-				'name': 'CompanyID',
-				'reference': {
-					'table': 'PublicCompanyInfo',
-					'field': 'StockCode',
-					'remote_field': 'StockCode'
-				},
-				'required': True
+				'name': 'ReportType',
+				'selector_xpath': '//td[2]'
 			}, {
 				'name': 'ReportDate',
+				'selector_xpath': '//td[3]',
 				'data_type': 'Date'
-			}, {
-				'name': 'StockCode',
-				'selector': lambda result, meta: meta['StockCode']
 			}]
 		},
 		"content": {
 			'res': {
-				'selector_css': '',
+				'selector_css': 'div.content',
 				'next_step': 'db'
 			},
-			'fields': [
-			]
 		},
 		"db": {
 			'type': "db",
-			'table_name': "PublicCompanyReport"
+			'table_name': "PublicCompanyReport",
+			'fields': [{
+				'name': 'CompanyID',
+				'reference': {
+					'table': 'PublicCompanyInfo',
+					'field': '$$StockCode',
+					'remote_field': 'StockCode'
+				},
+				'required': True
+			}, {
+				'name': 'ReportNumber',
+				'selector_xpath': 'div.detail-body',
+				'selector_regex': u'公告编号：([0-9-]*)'
+			}, {
+				'name': 'Headline',
+				'selector_css': 'div.detail-header h1'
+			}, {
+				'name': 'DetailContent',
+				'selector_xpath': 'div.detail-body'
+			}]
 		}
 	}
 
