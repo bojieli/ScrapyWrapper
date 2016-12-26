@@ -15,6 +15,7 @@ import html2text
 import htmlentities
 import traceback
 import datetime
+from HTMLParser import HTMLParser
 from config import ScrapyWrapperConfig
 from .helper import ScrapyHelper, AttrDict
 
@@ -70,6 +71,7 @@ class SpiderWrapper(scrapy.Spider):
 			request = scrapy.Request(url=http_params.url, method=http_params.method, headers=http_params.headers, body=http_params.post_rawdata, cookies=http_params.cookies, encoding=http_params.encoding, callback=self._http_request_callback)
 		request.meta['step'] = curr_step
 		request.meta['meta'] = http_params.meta
+		request.meta['encoding'] = http_params.encoding
 		return request
 
 	def _to_attr_dict(self, c):
@@ -136,15 +138,18 @@ class SpiderWrapper(scrapy.Spider):
 			del res_conf.selector_href_text
 
 		if "selector_href_contains" in res_conf:
-			res_conf.selector_xpath = '//a[contains(@href, "' + res_conf.selector_href_text + '")]/@href'
-			del res_conf.selector_href_text
+			res_conf.selector_xpath = '//a[contains(@href, "' + res_conf.selector_href_contains + '")]/@href'
+			del res_conf.selector_href_contains
 
 		if "selector_href_text_contains" in res_conf:
-			res_conf.selector_xpath = '//a[contains(text(), "' + res_conf.selector_href_text + '")]/@href'
-			del res_conf.selector_href_text
+			res_conf.selector_xpath = '//a[contains(text(), "' + res_conf.selector_href_text_contains + '")]/@href'
+			del res_conf.selector_href_text_contains
 		# in place modifications, no return
 
-	def _parse_text_response(self, response_text, res_conf, encoding='utf-8'):
+	def _parse_text_response(self, response_text, res_conf, meta):
+		#if "encoding" in meta and meta['encoding'] != 'utf-8':
+		#	response_text = response_text.decode(meta['encoding']).encode('utf-8')
+
 		results = []
 
 		try:
@@ -155,23 +160,30 @@ class SpiderWrapper(scrapy.Spider):
 					from slimit.visitors import nodevisitor
 					tree = Parser().parse(response_text)
 					results = [ getattr(node, 'value') for node in nodevisitor.visit(tree) if isinstance(node, ast.String) ]
-					
+
 			elif "selector_xpath" in res_conf:
 				doc = lxml.html.fromstring(response_text)
 				if type(res_conf.selector_xpath) is list:
 					for p in res_conf.selector_xpath:
 						for m in doc.xpath(p):
-							results.append(self._strip_tags(res_conf, lxml.etree.tostring(m)))
+							try:
+								results.append(self._strip_tags(res_conf, lxml.etree.tostring(m)))
+							except:
+								results.append(self._strip_tags(res_conf, str(m)))
 				else:
 					for m in doc.xpath(res_conf.selector_xpath):
-						results.append(self._strip_tags(res_conf, lxml.etree.tostring(m)))
+						try:
+							results.append(self._strip_tags(res_conf, lxml.etree.tostring(m)))
+						except:
+							results.append(self._strip_tags(res_conf, str(m)))
 			elif "selector_json" in res_conf:
 				obj = json.loads(response_text)
 				levels = res_conf.selector_json.split('.')
 				next_objs = [ obj ]
 				for l in levels:
 					if l == '*':
-						next_objs = [ o.values() for o in next_objs ].flatten()
+						next_objs = [ o.values() for o in next_objs ]
+						next_objs = [ item for sublist in next_objs for item in sublist ]
 					else:
 						next_objs = [ o[l] for o in next_objs if l in o ]
 				results = [ o for o in next_objs if type(o) is str ]
@@ -187,7 +199,7 @@ class SpiderWrapper(scrapy.Spider):
 				results = regex_results
 
 			if "selector" in res_conf and callable(res_conf.selector):
-				results = [ res_conf.selector(r) for r in results ]
+				results = [ res_conf.selector(r, meta) for r in results ]
 		except:
 			e = sys.exc_info()
 			print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
@@ -209,14 +221,17 @@ class SpiderWrapper(scrapy.Spider):
 		return results
 
 	def _parse_and_mangle_text_response(self, text_response, res_conf, meta):
-		text_results = self._parse_text_response(text_response, res_conf)
+		text_results = self._parse_text_response(text_response, res_conf, meta)
 		return self._mangle_text_results(text_results, res_conf, meta)
 
 	def _parse_http_response(self, response, res_conf):
-		meta = res_conf.meta if "meta" in res_conf else response.meta['meta']
-		return self._parse_and_mangle_text_response(response.body, res_conf, meta)
+		meta = response.meta['meta']
+		if meta is None:
+			meta = {}
+		meta['encoding'] = response.meta['encoding']
+		return self._parse_and_mangle_text_response(response.body_as_unicode(), res_conf, meta)
 
-	def _parse_record_field(self, res_conf, result, encoding='utf-8'):
+	def _parse_record_field(self, res_conf, result):
 		if "value" in res_conf:
 			return res_conf.value # fixed value
 		try:
@@ -330,6 +345,12 @@ class SpiderWrapper(scrapy.Spider):
 		m = re.search('([0-9]{4})-([0-9]{2})-([0-9]{2})', text)
 		if m:
 			return text
+		m = re.search('([0-9]{4})/([0-9]{2})/([0-9]{2})', text)
+		if m:
+			return m.group(1) + '-' + m.group(2) + '-' + m.group(3)
+		m = re.search('([0-9]{2})/([0-9]{2})/([0-9]{4})', text)
+		if m:
+			return m.group(3) + '-' + m.group(1) + '-' + m.group(2)
 		m = re.search(u'([0-9]{4})年([0-9]{2})月([0-9]{2})日', text)
 		if m:
 			return m.group(1) + '-' + m.group(2) + '-' + m.group(3)
@@ -341,12 +362,14 @@ class SpiderWrapper(scrapy.Spider):
 		except:
 			return ScrapyHelper().parse_chinese_int(text)
 
-	def _parse_db_record(self, conf, url, result, meta=None):
+	def _parse_db_record(self, conf, url, result, curr_step, meta=None):
 		if "preprocessor" in conf and callable(conf.preprocessor):
 			(url, result, meta) = conf.preprocessor(url, result, meta)
 
 		reference_fields = []
 		record = {}
+		if "fields" not in conf:
+			conf.fields = []
 		for res_conf in conf.fields:
 			if "reference" in res_conf:
 				reference_fields.append(res_conf)
@@ -378,8 +401,8 @@ class SpiderWrapper(scrapy.Spider):
 						parsed = None
 			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
 				parsed = res_conf.data_postprocessor(parsed)
-			if parsed != None:
-				record[res_conf.name] = parsed
+			if parsed:
+				record[res_conf.name] = HTMLParser().unescape(parsed)
 
 		for res_conf in reference_fields:
 			status = self._parse_reference_field(res_conf, record)
@@ -389,21 +412,25 @@ class SpiderWrapper(scrapy.Spider):
 
 		if "postprocessor" in conf and callable(conf.postprocessor):
 			record = conf.postprocessor(record)
-		for res_conf in conf.fields:
-			if res_conf.name in record and record[res_conf.name] is None:
-				del record[res_conf.name]
-			if "skip" in res_conf and res_conf.skip:
-				del record[res_conf.name]
-		data_guid = self._insert_db_record(conf, url, record)
 
-		results = []
-		if "res" in conf:
+		# the next thing to do...
+		if meta is None:
 			meta = {}
-			meta.info_id = guid
-			meta.info_table = conf.table_name
-			meta.record = conf.record
-			results = self._parse_and_mangle_text_response(result, conf.res, meta)
-		return results
+		for k in record:
+			meta[k] = record[k]				
+
+		# remove empty fields to insert to db
+		if conf.type == 'db':
+			for res_conf in conf.fields:
+				if res_conf.name in record and record[res_conf.name] is None:
+					del record[res_conf.name]
+				if "skip" in res_conf and res_conf.skip:
+					del record[res_conf.name]
+			data_guid = self._insert_db_record(conf, url, record)
+			meta['info_id'] = data_guid
+			meta['info_table'] = conf.table_name
+
+		return (result, curr_step, meta)
 
 	def _ftp_mkdir_recursive(self, path):
 		sub_path = os.path.dirname(path)
@@ -482,14 +509,15 @@ class SpiderWrapper(scrapy.Spider):
 
 			res_conf = db_conf.res
 			if type(res_conf) is list:
-				results = [ self._parse_and_mangle_text_response(response.body, one_conf, meta) for one_conf in res_conf ].flatten()
+				results = [ self._parse_and_mangle_text_response(response.body_as_unicode(), one_conf, meta) for one_conf in res_conf ]
+				results = [ item for sublist in results for item in sublist ]
 			else:
-				results = self._parse_and_mangle_text_response(response.body, res_conf, meta)
+				results = self._parse_and_mangle_text_response(response.body_as_unicode(), res_conf, meta)
 			for req in self._yield_requests_from_parse_results(results):
 				yield req
 
 
-	def _parse_file_record(self, conf, referer, url, meta):
+	def _parse_file_record(self, conf, referer, url, curr_step, meta):
 		req = scrapy.Request(url=url, callback=self._parse_file_record_callback)
 		req.meta['referer'] = referer
 		req.meta['conf'] = conf
@@ -508,12 +536,12 @@ class SpiderWrapper(scrapy.Spider):
 			if "type" not in step_config:
 				step_config.type = "http" # default
 
+			result = self._parse_db_record(step_config, url, *result)
+			# the returned result has more metadata
 			if step_config.type == "db":
-				l = self._parse_db_record(step_config, url, result[0], result[2])
-				if type(l) is list:
-					results.extend(l)
+				pass
 			elif step_config.type == "file":
-				yield self._parse_file_record(step_config, url, result[0], result[2])
+				yield self._parse_file_record(step_config, url, *result)
 			elif step_config.type == "http":
 				yield self._build_request(*result)
 			else:
@@ -522,15 +550,17 @@ class SpiderWrapper(scrapy.Spider):
 
 	def _http_request_callback(self, response):
 		step_conf = self.config.steps[response.meta['step']]
+		results = []
 		if "res" in step_conf:
 			if callable(step_conf.res):
 				results = step_conf.res(response)
 			elif type(step_conf.res) is list:
-				results = [ self._parse_http_response(response, res_conf) for res_conf in step_conf.res ].flatten()
+				results = [ self._parse_http_response(response, res_conf) for res_conf in step_conf.res ]
+				results = [ item for sublist in results for item in sublist ]
 			else:
 				results = self._parse_http_response(response, step_conf.res)
 		else:
-			results = [ (response.body, None, response.meta['meta']) ]
+			results = [ (response.body_as_unicode(), response.meta['step'], response.meta['meta']) ]
 
 		for req in self._yield_requests_from_parse_results(response.url, results):
 			yield req
