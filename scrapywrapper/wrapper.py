@@ -13,36 +13,39 @@ import lxml
 import cssselect
 import html2text
 import htmlentities
+import traceback
+import datetime
 from config import ScrapyWrapperConfig
-from .helper import ScrapyHelper
+from .helper import ScrapyHelper, AttrDict
 
 class SpiderWrapper(scrapy.Spider):
 	config = ScrapyWrapperConfig()
 
 	def start_requests(self):
+		self._check_config()
 		self._init_db()
 		if callable(self.config.begin_urls):
-			for url in begin_urls():
-				yield _build_request(url, "begin")
+			for url in self.config.begin_urls():
+				yield self._build_request(url, "begin")
 		else:
-			for url in begin_urls:
-				yield _build_request(url, "begin")
+			for url in self.config.begin_urls:
+				yield self._build_request(url, "begin")
 
 	def _gen_http_params(self, url, req_conf, meta=None):
 		if callable(req_conf):
 			return req_conf(url, meta)
 
 		# default values
-		conf = {
-			url: url,
-			meta: meta,
-			method: 'get',
-			headers: {},
-			cookies: {},
-			post_rawdata: None,
-			post_formdata: None,
-			encoding: 'utf-8'
-		}
+		conf = AttrDict({
+			'url': url,
+			'meta': meta,
+			'method': 'get',
+			'headers': {},
+			'cookies': {},
+			'post_rawdata': None,
+			'post_formdata': None,
+			'encoding': 'utf-8'
+		})
 		for k in conf:
 			if k in req_conf:
 				if callable(req_conf[k]):
@@ -65,14 +68,34 @@ class SpiderWrapper(scrapy.Spider):
 			request = scrapy.FormRequest(url=http_params.url, method=http_params.method, headers=http_params.headers, formdata=http_params.post_formdata, cookies=http_params.cookies, encoding=http_params.encoding, callback=self._http_request_callback)
 		else:
 			request = scrapy.Request(url=http_params.url, method=http_params.method, headers=http_params.headers, body=http_params.post_rawdata, cookies=http_params.cookies, encoding=http_params.encoding, callback=self._http_request_callback)
-		request.meta.step = curr_step
-		request.meta.meta = http_params.meta
+		request.meta['step'] = curr_step
+		request.meta['meta'] = http_params.meta
 		return request
 
+	def _to_attr_dict(self, c):
+		if type(c) is dict:
+			c = AttrDict(c)
+			for k in c:
+				c[k] = self._to_attr_dict(c[k])
+		elif type(c) is list:
+			c = [ self._to_attr_dict(v) for v in c ]
+		return c
+
+	def _check_config(self):
+		c = self.config
+		c.proxy = AttrDict(c.proxy)
+		c.custom_settings = AttrDict(c.custom_settings)
+		c.db = AttrDict(c.db)
+		c.file_storage = AttrDict(c.file_storage)
+		c.url_table = AttrDict(c.url_table)
+		c.steps = self._to_attr_dict(c.steps)
+
 	def _init_db(self):
-		if self.config.db_type != 'mssql':
+		if not self.config.db:
+			raise "Database config not specified"
+		if self.config.db.type != 'mssql':
 			raise "Only mssql is supported!"
-		self.dbconn = pymssql.connect(self.config.db_server, self.config.db_user, self.config.db_password, self.config.db_name, charset="utf8")
+		self.dbconn = pymssql.connect(self.config.db.server, self.config.db.user, self.config.db.password, self.config.db.name, charset="utf8")
 		self.cursor = self.dbconn.cursor(as_dict=True)
 		#self.db_column_types = self._get_db_columns(self.config.table_name)
 
@@ -101,12 +124,12 @@ class SpiderWrapper(scrapy.Spider):
 			del res_conf.selector_contains
 
 		if "selector_table_sibling" in res_conf:
-			res_conf.selector_xpath = '//td/descendant-or-self::*[contains(text(), "' + res_conf.selector_sibling + '")]/ancestor-or-self::td/following-sibling::td'
-			del res_conf.selector_sibling
+			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[contains(text(), "' + res_conf.selector_table_sibling + '")]]/following-sibling::td'
+			del res_conf.selector_table_sibling
 
 		if "selector_table_next_row" in res_conf:
-			res_conf.selector_xpath = '//td/descendant-or-self::*[contains(text(), "' + res_conf.selector_sibling + '")]/ancestor-or-self::tr/following-sibling::tr/td'
-			del res_conf.selector_sibling
+			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[contains(text(), "' + res_conf.selector_table_next_row + '")]]/ancestor::tr/following-sibling::tr/td'
+			del res_conf.selector_table_next_row
 
 		if "selector_href_text" in res_conf:
 			res_conf.selector_xpath = '//a[text()="' + res_conf.selector_href_text + '"]/@href'
@@ -126,18 +149,22 @@ class SpiderWrapper(scrapy.Spider):
 
 		try:
 			self._prepare_res_conf(res_conf)
-			if "parser" in res_conf:
-				if res_conf.parser == "js-string":
+			if "parser" in res_conf and res_conf.parser == "js-string":
 					from slimit import ast
 					from slimit.parser import Parser
 					from slimit.visitors import nodevisitor
 					tree = Parser().parse(response_text)
 					results = [ getattr(node, 'value') for node in nodevisitor.visit(tree) if isinstance(node, ast.String) ]
 					
-			if "selector_xpath" in res_conf:
-				doc = lxml.etree.fromstring(response_text)
-				for m in doc.xpath(res_conf.selector_xpath):
-					results.append(self._strip_tags(res_conf, lxml.etree.tostring(m)))
+			elif "selector_xpath" in res_conf:
+				doc = lxml.html.fromstring(response_text)
+				if type(res_conf.selector_xpath) is list:
+					for p in res_conf.selector_xpath:
+						for m in doc.xpath(p):
+							results.append(self._strip_tags(res_conf, lxml.etree.tostring(m)))
+				else:
+					for m in doc.xpath(res_conf.selector_xpath):
+						results.append(self._strip_tags(res_conf, lxml.etree.tostring(m)))
 			elif "selector_json" in res_conf:
 				obj = json.loads(response_text)
 				levels = res_conf.selector_json.split('.')
@@ -159,12 +186,12 @@ class SpiderWrapper(scrapy.Spider):
 						regex_results.append(m.group(1))
 				results = regex_results
 
-			if "selector" in res_conf:
+			if "selector" in res_conf and callable(res_conf.selector):
 				results = [ res_conf.selector(r) for r in results ]
 		except:
 			e = sys.exc_info()
 			print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
-			print('    while parsing response for url ' + response.url + ' (response ' + len(response_text) + ' bytes)')
+			print('    while parsing response (response ' + str(len(response_text)) + ' bytes)')
 			traceback.print_tb(e[2])
 
 		return results
@@ -182,11 +209,11 @@ class SpiderWrapper(scrapy.Spider):
 		return results
 
 	def _parse_and_mangle_text_response(self, text_response, res_conf, meta):
-		text_results = self._parse_text_response(response.body, res_conf)
+		text_results = self._parse_text_response(text_response, res_conf)
 		return self._mangle_text_results(text_results, res_conf, meta)
 
 	def _parse_http_response(self, response, res_conf):
-		meta = res_conf.meta or response.meta.meta
+		meta = res_conf.meta if "meta" in res_conf else response.meta['meta']
 		return self._parse_and_mangle_text_response(response.body, res_conf, meta)
 
 	def _parse_record_field(self, res_conf, result, encoding='utf-8'):
@@ -194,9 +221,23 @@ class SpiderWrapper(scrapy.Spider):
 			return res_conf.value # fixed value
 		try:
 			self._prepare_res_conf(res_conf)
-			if "selector_xpath" in res_conf:
-				doc = lxml.etree.fromstring(response_text)
-				matches = doc.xpath(res_conf.selector_xpath)
+			if "parser" in res_conf and res_conf.parser == "js-string":
+					from slimit import ast
+					from slimit.parser import Parser
+					from slimit.visitors import nodevisitor
+					tree = Parser().parse(result)
+					result = [ getattr(node, 'value') for node in nodevisitor.visit(tree) if isinstance(node, ast.String) ][0]
+					
+			elif "selector_xpath" in res_conf:
+				doc = lxml.html.fromstring(result)
+				matches = []
+				if type(res_conf.selector_xpath) is list:
+					for p in res_conf.selector_xpath:
+						for m in doc.xpath(p):
+							matches.append(m)
+				else:
+					for m in doc.xpath(res_conf.selector_xpath):
+						matches.append(m)
 				if len(matches) == 0:
 					result = ""
 				else:
@@ -225,7 +266,7 @@ class SpiderWrapper(scrapy.Spider):
 		except:
 			e = sys.exc_info()
 			print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
-			print('    while parsing response for url ' + response.url + ' (response ' + len(response.body) + ' bytes)')
+			print('    while parsing response (' + str(len(result)) + ' bytes)')
 			traceback.print_tb(e[2])
 
 		return result
@@ -233,6 +274,7 @@ class SpiderWrapper(scrapy.Spider):
 	def _parse_reference_field(self, res_conf, record):
 		local_field = res_conf.name
 		remote_table = res_conf.reference.table
+		remote_id_field = res_conf.reference.remote_id_field if "remote_id_field" in res_conf.reference else "ID"
 		if "remote_field" in res_conf.reference:
 			remote_fields = [ res_conf.reference.remote_field ]
 		elif "remote_fields" in res_conf.reference:
@@ -258,17 +300,17 @@ class SpiderWrapper(scrapy.Spider):
 			match = res_conf.reference.match
 
 		if match == 'exact':
-			self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' = %s' for r in remote_fields ]), tuple(local_data))
+			self.cursor.execute('SELECT ' + remote_id_field + ' FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' = %s' for r in remote_fields ]), tuple(local_data))
 		elif match == 'prefix':
-			self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]), tuple([ d + '%' for d in local_data ]))
+			self.cursor.execute('SELECT ' + remote_id_field + ' FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]), tuple([ d + '%' for d in local_data ]))
 		elif match == 'wildcard':
-			self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]) + ' LIKE %s', tuple([ '%' + d + '%' for d in local_data]))
+			self.cursor.execute('SELECT ' + remote_id_field + ' FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]) + ' LIKE %s', tuple([ '%' + d + '%' for d in local_data]))
 		elif match == 'lpm':
 			while local_data[0] != '':
-				self.cursor.execute('SELECT ID FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]), tuple([ d + '%' for d in local_data ]))
-				row = cursor.fetchone()
+				self.cursor.execute('SELECT ' + remote_id_field + ' FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]), tuple([ d + '%' for d in local_data ]))
+				row = self.cursor.fetchone()
 				if row:
-					record[local_field] = row['ID']
+					record[local_field] = row[remote_id_field]
 					return True
 				else: # try with a shorter prefix
 					local_data = [ d[:-1] for d in local_data ]
@@ -277,28 +319,27 @@ class SpiderWrapper(scrapy.Spider):
 			raise scrapy.exceptions.CloseSpider("unknown match type " + match + " in reference field " + res_conf.name)
 
 		# for common cases
-		row = cursor.fetchone()
+		row = self.cursor.fetchone()
 		if row:
-			record[local_field] = row['ID']
+			record[local_field] = row[remote_id_field]
 			return True
 		else:
 			return False
 
 	def _parse_date(self, text):
-		m = re.search('([0-9]*)-([0-9]*)-([0-9]*)', text)
+		m = re.search('([0-9]{4})-([0-9]{2})-([0-9]{2})', text)
 		if m:
 			return text
-		m = re.search(u'([0-9]*)年([0-9]*)月([0-9]*)日', text)
+		m = re.search(u'([0-9]{4})年([0-9]{2})月([0-9]{2})日', text)
 		if m:
 			return m.group(1) + '-' + m.group(2) + '-' + m.group(3)
 		return None
-
 
 	def _parse_int(self, text):
 		try:
 			return int(text)
 		except:
-			return ScrapyWrapper().parse_chinese_int(text)
+			return ScrapyHelper().parse_chinese_int(text)
 
 	def _parse_db_record(self, conf, url, result, meta=None):
 		if "preprocessor" in conf and callable(conf.preprocessor):
@@ -313,7 +354,7 @@ class SpiderWrapper(scrapy.Spider):
 			parsed = self._parse_record_field(res_conf, result)
 			if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
 				parsed = res_conf.data_preprocessor(parsed)
-			if parsed == None and "required" in res_conf and res_conf.required:
+			if (parsed == None or len(parsed) == 0) and "required" in res_conf and res_conf.required:
 				print('Record parse error: required field ' + res_conf.name + ' does not exist')
 				return
 			if "data_validator" in res_conf and callable(res_conf.data_validator):
@@ -325,21 +366,25 @@ class SpiderWrapper(scrapy.Spider):
 					parsed = self._parse_date(parsed)
 				elif res_conf.data_type == "float":
 					try:
-						parsed = float(parsed)
+						parsed = str(float(parsed))
 					except:
-						parsed = self._parse_int(parsed)
+						parsed = str(self._parse_int(parsed))
 				elif res_conf.data_type == "int":
-					parsed = self._parse_int(parsed)
+					parsed = str(self._parse_int(parsed))
 				elif res_conf.data_type == "percentage":
-					parsed = float(parsed.strip('%') / 100)
+					try:
+						parsed = str(float(parsed.strip('%')) / 100)
+					except:
+						parsed = None
 			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
 				parsed = res_conf.data_postprocessor(parsed)
-			record[res_conf.name] = parsed
+			if parsed != None:
+				record[res_conf.name] = parsed
 
 		for res_conf in reference_fields:
-			status = _parse_reference_field(res_conf, record)
+			status = self._parse_reference_field(res_conf, record)
 			if status == False and "required" in res_conf and res_conf.required:
-				print('Record parse error: required reference field ' + res_conf.name + ' not matched')
+				print('Record parse error: required reference field ' + res_conf.name + ' not matched (value ' + record[res_conf.reference.field] + ')')
 				return
 
 		if "postprocessor" in conf and callable(conf.postprocessor):
@@ -424,18 +469,18 @@ class SpiderWrapper(scrapy.Spider):
 		else:
 			raise scrapy.exceptions.CloseSpider('undefined record type ' + conf.type)
 
-		db_conf = response.meta.conf
+		db_conf = response.meta['conf']
 		record = {}
 		record[db_conf.path_field] = filepath
-		record[db_conf.info_id_field] = response.meta.info_id
-		record[db_conf.info_table_field] = response.meta.info_table
+		record[db_conf.info_id_field] = response.meta['info_id']
+		record[db_conf.info_table_field] = response.meta['info_table']
 		self._insert_db_record(db_conf, response.url, record)
 
-		if "res" in response.meta.conf:
+		if "res" in db_conf:
 			meta = record
 			meta.referer = response.url
 
-			res_conf = response.meta.conf.res
+			res_conf = db_conf.res
 			if type(res_conf) is list:
 				results = [ self._parse_and_mangle_text_response(response.body, one_conf, meta) for one_conf in res_conf ].flatten()
 			else:
@@ -446,13 +491,13 @@ class SpiderWrapper(scrapy.Spider):
 
 	def _parse_file_record(self, conf, referer, url, meta):
 		req = scrapy.Request(url=url, callback=self._parse_file_record_callback)
-		req.meta.referer = referer
-		req.meta.conf = conf
-		req.meta.info_id = meta.info_id
-		req.meta.info_table = meta.info_table
+		req.meta['referer'] = referer
+		req.meta['conf'] = conf
+		req.meta['info_id'] = meta.info_id
+		req.meta['info_table'] = meta.info_table
 		return req
 
-	def _yield_requests_from_parse_results(self, results):
+	def _yield_requests_from_parse_results(self, url, results):
 		for result in results:
 			if len(result) < 2 or type(result[1]) is None or result[1] == 'end':
 				continue
@@ -464,10 +509,12 @@ class SpiderWrapper(scrapy.Spider):
 				step_config.type = "http" # default
 
 			if step_config.type == "db":
-				results.extend(self._parse_db_record(step_config, *result))
+				l = self._parse_db_record(step_config, url, result[0], result[2])
+				if type(l) is list:
+					results.extend(l)
 			elif step_config.type == "file":
-				yield self._parse_file_record(step_config, *result)
-			elif step.config.type == "http":
+				yield self._parse_file_record(step_config, url, result[0], result[2])
+			elif step_config.type == "http":
 				yield self._build_request(*result)
 			else:
 				raise scrapy.exceptions.CloseSpider('undefined step type ' + step.config.type)
@@ -483,9 +530,9 @@ class SpiderWrapper(scrapy.Spider):
 			else:
 				results = self._parse_http_response(response, step_conf.res)
 		else:
-			results = [ (response.body, None, response.meta.meta) ]
+			results = [ (response.body, None, response.meta['meta']) ]
 
-		for req in self._yield_requests_from_parse_results(results):
+		for req in self._yield_requests_from_parse_results(response.url, results):
 			yield req
 
 
@@ -508,14 +555,22 @@ class SpiderWrapper(scrapy.Spider):
 	def insert_row(self, table_name, row):
 		fields = [k for k in row]
 		values = [v for v in row.values()]
-		self.insert_one_with_type(table_name, fields, values)
+		value_types = ['%s' for k in row]
+		self.insert_one_with_type(table_name, fields, value_types, values)
 
 	def insert_many_with_type(self, table_name, fields, value_types, table_data):
-		self.cursor.execute("INSERT INTO " + table_name + " (" + ",".join(fields) + ") VALUES "
-			+ ",".join([ "(" + ",".join(value_types) + ")" for row in table_data ]),
-			tuple([item for sublist in table_data for item in sublist]))
-		self.conn.commit()
+		sql = "INSERT INTO " + table_name + " (" + ",".join(fields) + ") VALUES " + ",".join([ "(" + ",".join(value_types) + ")" for row in table_data ])
+		data = tuple([item for sublist in table_data for item in sublist])
+		try:
+			self.cursor.execute(sql, data)
+			self.dbconn.commit()
+		except:
+			e = sys.exc_info()
+			print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
+			traceback.print_tb(e[2])
+			print(fields)
+			print(table_data)
 
 	def insert_one_with_type(self, table_name, fields, value_types, table_data):
-		self.insertmany(table_name, fields, value_types, [table_data])
+		self.insert_many_with_type(table_name, fields, value_types, [table_data])
 

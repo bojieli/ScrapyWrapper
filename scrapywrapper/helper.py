@@ -50,7 +50,7 @@ class ScrapyHelper():
 	        u'0':0, u'1':1, u'2':2, u'3':3, u'4':4,
 	        u'5':5, u'6':6, u'7':7, u'8':8, u'9':9}
 	
-	def parse_chinese_int(chinese_digits, encoding="utf-8"):
+	def parse_chinese_int(self, chinese_digits, encoding="utf-8"):
 	    if isinstance (chinese_digits, str):
 	        chinese_digits = chinese_digits.decode (encoding)
 	
@@ -59,7 +59,7 @@ class ScrapyHelper():
 	    hnd_mln = 0
 	    for count in range(len(chinese_digits)):
 	        curr_char  = chinese_digits[count]
-	        curr_digit = chs_arabic_map.get(curr_char, None)
+	        curr_digit = self.chs_arabic_map.get(curr_char, None)
 	        # meet 「亿」 or 「億」
 	        if curr_digit == 10 ** 8:
 	            result  = result + tmp
@@ -87,4 +87,9 @@ class ScrapyHelper():
 	    result = result + tmp
 	    result = result + hnd_mln
 	    return result
+
+class AttrDict(dict):
+	def __init__(self, *args, **kwargs):
+		super(AttrDict, self).__init__(*args, **kwargs)
+		self.__dict__ = self
 
