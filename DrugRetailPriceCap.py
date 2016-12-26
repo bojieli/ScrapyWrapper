@@ -5,8 +5,10 @@ from scrapywrapper.config import ScrapyWrapperConfig
 
 class ScrapyConfig(ScrapyWrapperConfig):
 	def url_generator(self):
-		for i in range(3542343,0,-1):
-			yield 'http://db.yaozh.com/api/index.php/Home/index/yaopinzhongbiao/id/' + str(i)
+		for i in range(769999,0,-1):
+			#yield 'http://db.yaozh.com/api/index.php/Home/index/yaopinjiage/id/' + str(i)
+			yield 'http://128.199.95.148:9574/yaopinjiage/id/' + str(i)
+
 
 	begin_urls = url_generator
 	#begin_urls = ["http://db.yaozh.com/api/index.php/Home/index/yaopinzhongbiao/id/3542343"]
@@ -25,7 +27,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		},
 		"db": {
 			'type': "db",
-			'table_name': "DrugBidInfo",
+			'table_name': "DrugRetailPriceCap",
 			'fields': [
 			{
 				'name': "DrugID",
@@ -36,60 +38,45 @@ class ScrapyConfig(ScrapyWrapperConfig):
 					'remote_id_field': 'ResID'
 				}
 			}, {
-				'name': "DrugGenericName",
-				'selector_json': "data.me_name",
+				'name': "DrugName",
+				'selector_json': "药品名称",
 				'required': True
 			}, {
-				'name': "DrugRetailName",
-				'selector_json': "data.me_brandname"
+				'name': "PriceSettingRegion",
+				'selector_json': "定价地区"
 			}, {
 				'name': "DosageType",
-				'selector_json': "data.me_jixing"
+				'selector_json': "剂型"
 			}, {
 				'name': "Specification",
-				'selector_json': "data.me_guifanjixing"
-			}, {
-				'name': "PackagingRatio",
-				'selector_json': "data.me_guige"
+				'selector_json': "规格"
 			}, {
 				'name': "UnitOfMeasurement",
-				'selector_json': "data.me_packaging"
+				'selector_json': "单位"
 			}, {
-				'name': "BidPrice",
-				'selector_json': "data.me_feiyong"
-			}, {
-				'name': "QualityLevel",
-				'selector_json': "data.me_qlevel"
+				'name': "RetailPriceCap",
+				'selector_json': "最高零售价(元)"
 			}, {
 				'name': "DrugManufacturerName",
-				'selector_json': "data.me_shengchanqiye"
+				'selector_json': "生产企业"
 			}, {
-				'name': "TenderCompany",
-				'selector_json': "data.me_bidder"
+				'name': "CommentInfo",
+				'selector_json': "备注"
 			}, {
-				'name': "BidProvince",
-				'selector_json': "data.me_first"
+				'name': "EffectiveDate",
+				'selector_json': "执行日期",
 			}, {
-				'name': "BidProvinceID",
+				'name': "RegionID",
 				'reference': {
 					'table': "TB_Addresses",
-					'field': "BidProvince",
+					'field': "PriceSettingRegion",
 					'remote_field': "Name",
 					'remote_id_field': 'PID',
 					'match': 'prefix'
 				}
 			}, {
-				'name': "PublicationDate",
-				'selector_json': "data.me_approvaldate"
-			}, {
-				'name': "CommentInfo",
-				'selector_json': "data.me_remarks2"
-			}, {
-				'name': "SourceDocument",
-				'selector_json': "data.me_source"
-			}, {
-				'name': "SourceDocumentUrl",
-				'selector_json': "data.xq_source"
+				'name': "DocumentNumber",
+				'selector_json': "文件号"
 			}]
 		}
 	}
