@@ -18,7 +18,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'url': lambda url, meta: 'http://f10.eastmoney.com/f10_v2/CompanySurvey.aspx?code=sz' + str(url)
 			},
 			'res': {
-				'selector_css': 'body > div.main > div.section.first',
+				'selector_css': 'body > div.main',
 				'keep_html_tags': True,
 				'next_step': 'db'
 			}
@@ -28,7 +28,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'table_name': "PublicCompanyInfo",
 			'fields': [{
 				'name': "ChineseName",
-				'selector_table_sibling': u'中文名称'
+				'selector_table_sibling': u'公司名称',
+				'required': True
 			}, {
 				'name': "EnglishName",
 				'selector_table_sibling': u'英文名称'
@@ -37,15 +38,13 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_table_sibling': u'曾用名'
 			}, {
 				'name': "StockCode",
-				'selector_table_sibling': u'股票代码'
+				'selector_table_sibling': u'A股代码',
+				'required': True
 			}, {
 				'name': "StockSymbol",
-				'selector_table_sibling': u'股票简称'
+				'selector_table_sibling': u'A股简称'
 			}, {
 				'name': "StockType",
-				'selector_table_sibling': u'股票简称'
-			}, {
-				'name': "StockSector",
 				'selector_table_sibling': u'证券类别'
 			}, {
 				'name': "StockSector",
@@ -63,7 +62,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'name': "Chairman",
 				'selector_table_sibling': u'董事长'
 			}, {
-				'name': "FinancialMarketCap",
+				'name': "FinancialMarketRep",
 				'selector_table_sibling': u'证券事务代表'
 			}, {
 				'name': "IndependentDirector",
@@ -91,7 +90,14 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			    'selector_table_sibling': u'区域'
 			}, {
 			    'name': "RegionID",
-			    'selector_table_sibling': u'区域ID'
+			    'reference': {
+					'table': 'TB_Addresses',
+					'field': 'Region',
+					'remote_field': 'Name',
+					'remote_id_field': 'PID',
+					'match': 'prefix'
+				},
+				'required': True
 			}, {
 			    'name': "PostalCode",
 			    'selector_table_sibling': u'邮政编码'
@@ -134,7 +140,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 			    'name': "InternetOfferingDate",
 			    'selector_table_sibling': u'网上发行日期',
-				'data_type': 'float'
+				'data_type': 'Date'
 			}, {
 			    'name': "OfferingType",
 			    'selector_table_sibling': u'发行方式'
@@ -144,31 +150,32 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'data_type': 'float'
 			}, {
 			    'name': "SizeOfOffering",
-			    'selector_table_sibling': u'发行量(股)',
+			    'selector_table_sibling': u'发行量',
 				'data_type': 'int'
 			}, {
 			    'name': "IssuePrice",
-			    'selector_table_sibling': u'每股发行价(元)',
+			    'selector_table_sibling': u'每股发行价',
 				'data_type': 'float'
 			}, {
 			    'name': "CostOfOffering",
-			    'selector_table_sibling': u'发行费用(元)',
+			    'selector_table_sibling': u'发行费用',
 				'data_type': 'float'
 			}, {
 			    'name': "OfferingCapitalization",
-			    'selector_table_sibling': u'发行总市值(元)',
-				'data_type': 'float'
+			    'selector_table_sibling': u'发行总市值',
+				'data_type': 'float',
+				'required': True
 			}, {
 			    'name': "RaisedCapital",
-			    'selector_table_sibling': u'募集资金净额(元)',
+			    'selector_table_sibling': u'募集资金净额',
 				'data_type': 'float'
 			}, {
 			    'name': "FirstDayOpeningPrice",
-			    'selector_table_sibling': u'首日开盘价(元)',
+			    'selector_table_sibling': u'首日开盘价',
 				'data_type': 'float'
 			}, {
 			    'name': "FirstDayClosingPrice",
-			    'selector_table_sibling': u'首日收盘价(元)',
+			    'selector_table_sibling': u'首日收盘价',
 				'data_type': 'float'
 			}, {
 			    'name': "FirstDayTurnoverRatio",
@@ -176,7 +183,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'data_type': 'percentage'
 			}, {
 			    'name': "FirstDayHighestPrice",
-			    'selector_table_sibling': u'首日最高价(元)',
+			    'selector_table_sibling': u'首日最高价',
 				'data_type': 'float'
 			}, {
 			    'name': "LotWinningRate",
@@ -192,5 +199,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 	}
 
 class Spider(SpiderWrapper):
+	name = 'PublicCompanyInfo'
 	config = ScrapyConfig()
 
