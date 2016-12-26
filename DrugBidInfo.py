@@ -33,7 +33,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				}
 			}, {
 				'name': "DrugGenericName",
-				'selector_json': "data.me_name"
+				'selector_json': "data.me_name",
+				'required': True
 			}, {
 				'name': "DrugRetailName",
 				'selector_json': "data.me_brandname"
@@ -51,13 +52,15 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_json': "data.me_packaging"
 			}, {
 				'name': "BidPrice",
-				'selector_json': "data.me_feiyong"
+				'selector_json': "data.me_feiyong",
+				'required': True
 			}, {
 				'name': "QualityLevel",
 				'selector_json': "data.me_qlevel"
 			}, {
 				'name': "DrugManufacturerName",
-				'selector_json': "data.me_shengchanqiye"
+				'selector_json': "data.me_shengchanqiye",
+				'required': True
 			}, {
 				'name': "TenderCompany",
 				'selector_json': "data.me_bidder"
@@ -66,11 +69,11 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_json': "data.me_first"
 			}, {
 				'name': "BidProvinceID",
-				'data_preprocessor': lambda province: province + u'省',
 				'reference': {
 					'table': "TB_Addresses",
 					'field': "BidProvince",
-					'remote_field': "Name"
+					'remote_field': "Name",
+					'match': 'prefix'
 				}
 			}, {
 				'name': "PublicationDate",
