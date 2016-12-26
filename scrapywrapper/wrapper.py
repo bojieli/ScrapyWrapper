@@ -185,6 +185,24 @@ class SpiderWrapper(scrapy.Spider):
 					else:
 						results = [ m.group(1) ]
 
+			elif "selector_matrix" in res_conf:
+				doc = lxml.html.fromstring(response_text)
+				matrix = []
+				for row in doc.xpath('//tr'):
+					col_count = 0
+					for col in row.xpath('.//td|.//th'):
+						if len(matrix) <= col_count:
+							matrix.append([])
+						matrix[col_count].append(lxml.etree.tostring(col))
+						col_count += 1
+
+				try:
+					if res_conf.selector_matrix['has_header']:
+						matrix = matrix[1:]
+				except:
+					pass
+				return [ ' '.join(col) for col in matrix ]
+
 			elif "selector_xpath" in res_conf:
 				doc = lxml.html.fromstring(response_text)
 				if type(res_conf.selector_xpath) is list:
@@ -200,6 +218,7 @@ class SpiderWrapper(scrapy.Spider):
 							results.append(self._strip_tags(res_conf, lxml.etree.tostring(m)))
 						except:
 							results.append(self._strip_tags(res_conf, str(m)))
+
 			elif "selector_json" in res_conf:
 				obj = json.loads(response_text)
 				levels = res_conf.selector_json.split('.')
@@ -384,18 +403,24 @@ class SpiderWrapper(scrapy.Spider):
 			return False
 
 	def _parse_date(self, text):
-		m = re.search('([0-9]{4})-([0-9]{2})-([0-9]{2})', text)
+		m = re.search(u'^([0-9]{4})年([0-9]{2})月([0-9]{2})日$', text)
+		if m:
+			return m.group(1) + '-' + m.group(2) + '-' + m.group(3)
+		m = re.search('^([0-9]{4})-([0-9]{2})-([0-9]{2})$', text)
 		if m:
 			return text
-		m = re.search('([0-9]{4})/([0-9]{2})/([0-9]{2})', text)
+		m = re.search('^([0-9]{2})-([0-9]{2})-([0-9]{2})$', text)
+		if m:
+			return '20' + text
+		m = re.search('^([0-9]{4})/([0-9]{2})/([0-9]{2})$', text)
 		if m:
 			return m.group(1) + '-' + m.group(2) + '-' + m.group(3)
-		m = re.search('([0-9]{2})/([0-9]{2})/([0-9]{4})', text)
+		m = re.search('^([0-9]{2})/([0-9]{2})/([0-9]{4})$', text)
 		if m:
 			return m.group(3) + '-' + m.group(1) + '-' + m.group(2)
-		m = re.search(u'([0-9]{4})年([0-9]{2})月([0-9]{2})日', text)
+		m = re.search('^([0-9]{2})/([0-9]{2})/([0-9]{2})$', text)
 		if m:
-			return m.group(1) + '-' + m.group(2) + '-' + m.group(3)
+			return '20' + m.group(3) + '-' + m.group(1) + '-' + m.group(2)
 		return None
 
 	def _parse_int(self, text):
@@ -425,13 +450,6 @@ class SpiderWrapper(scrapy.Spider):
 			parsed = self._parse_record_field(res_conf, result, meta)
 			if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
 				parsed = res_conf.data_preprocessor(parsed, meta)
-			if (parsed == None or len(parsed) == 0) and "required" in res_conf and res_conf.required:
-				print('Record parse error: required field ' + res_conf.name + ' does not exist')
-				return
-			if "data_validator" in res_conf and callable(res_conf.data_validator):
-				if not res_conf.data_validator(parsed):
-					print('Record parse error: field ' + res_conf.name + ' failed data validator (value "' + parsed + '")')
-					return
 			if "data_type" in res_conf:
 				if res_conf.data_type == "Date":
 					parsed = self._parse_date(parsed)
@@ -447,6 +465,15 @@ class SpiderWrapper(scrapy.Spider):
 						parsed = str(float(parsed.strip('%')))
 					except:
 						parsed = None
+			if (parsed == None or len(parsed) == 0) and "required" in res_conf and res_conf.required:
+				print('Record parse error: required field ' + res_conf.name + ' does not exist')
+				print('Full record: ' + result)
+				return
+			if "data_validator" in res_conf and callable(res_conf.data_validator):
+				if not res_conf.data_validator(parsed):
+					print('Record parse error: field ' + res_conf.name + ' failed data validator (value "' + parsed + '")')
+					print('Full record: ' + result)
+					return
 			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
 				parsed = res_conf.data_postprocessor(parsed, meta)
 			if parsed:
@@ -456,6 +483,7 @@ class SpiderWrapper(scrapy.Spider):
 			status = self._parse_reference_field(res_conf, record)
 			if status == False and "required" in res_conf and res_conf.required:
 				print('Record parse error: required reference field ' + res_conf.name + ' not matched (value ' + record[res_conf.reference.field] + ')')
+				print('Full record: ' + result)
 				return
 
 		if "postprocessor" in conf and callable(conf.postprocessor):
