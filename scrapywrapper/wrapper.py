@@ -55,7 +55,7 @@ class SpiderWrapper(scrapy.Spider):
 					conf[k] = req_conf[k]
 		return conf
 
-	def _build_request(self, url, curr_step, meta=None):
+	def _build_request(self, url, curr_step, meta=None, referer=None):
 		if curr_step not in self.config.steps:
 			raise scrapy.exceptions.CloseSpider('undefined step ' + curr_step)
 		step_conf = self.config.steps[curr_step]
@@ -72,6 +72,7 @@ class SpiderWrapper(scrapy.Spider):
 		request.meta['step'] = curr_step
 		request.meta['meta'] = http_params.meta
 		request.meta['encoding'] = http_params.encoding
+		request.meta['referer'] = referer
 		return request
 
 	def _to_attr_dict(self, c):
@@ -99,6 +100,7 @@ class SpiderWrapper(scrapy.Spider):
 			raise "Only mssql is supported!"
 		self.dbconn = pymssql.connect(self.config.db.server, self.config.db.user, self.config.db.password, self.config.db.name, charset="utf8")
 		self.cursor = self.dbconn.cursor(as_dict=True)
+		self.cursor.execute('SET ANSI_WARNINGS off')
 		#self.db_column_types = self._get_db_columns(self.config.table_name)
 
 	def _get_db_columns(self, table_name):
@@ -231,7 +233,7 @@ class SpiderWrapper(scrapy.Spider):
 		meta['encoding'] = response.meta['encoding']
 		return self._parse_and_mangle_text_response(response.body_as_unicode(), res_conf, meta)
 
-	def _parse_record_field(self, res_conf, result):
+	def _parse_record_field(self, res_conf, result, meta):
 		if "value" in res_conf:
 			return res_conf.value # fixed value
 		try:
@@ -278,6 +280,9 @@ class SpiderWrapper(scrapy.Spider):
 				m = re.search(res_conf.selector_regex, result)
 				if m:
 					result = m.group(1)
+
+			if "selector" in res_conf and callable(res_conf.selector):
+				result = res_conf.selector(result, meta)
 		except:
 			e = sys.exc_info()
 			print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
@@ -297,14 +302,20 @@ class SpiderWrapper(scrapy.Spider):
 		else:
 			raise scrapy.exceptions.CloseSpider("unspecfied remote_field(s) in reference field " + res_conf.name)
 		if "field" in res_conf.reference:
-			local_data = record[res_conf.reference.field]
-			if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
-				local_data = res_conf.data_preprocessor(local_data)
-			local_data = [ local_data ]
+			try:
+				local_data = record[res_conf.reference.field]
+				if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
+					local_data = res_conf.data_preprocessor(local_data)
+				local_data = [ local_data ]
+			except KeyError:
+				return False
 		elif "fields" in res_conf.reference:
-			local_data = [ record[f] for f in res_conf.reference.fields ]
-			if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
-				local_data = res_conf.data_preprocessor(local_data)
+			try:
+				local_data = [ record[f] for f in res_conf.reference.fields ]
+				if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
+					local_data = res_conf.data_preprocessor(local_data)
+			except KeyError:
+				return False
 		else:
 			raise scrapy.exceptions.CloseSpider("unspecfied local field(s) in reference field " + res_conf.name)
 
@@ -374,7 +385,7 @@ class SpiderWrapper(scrapy.Spider):
 			if "reference" in res_conf:
 				reference_fields.append(res_conf)
 				continue
-			parsed = self._parse_record_field(res_conf, result)
+			parsed = self._parse_record_field(res_conf, result, meta)
 			if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
 				parsed = res_conf.data_preprocessor(parsed)
 			if (parsed == None or len(parsed) == 0) and "required" in res_conf and res_conf.required:
@@ -418,6 +429,7 @@ class SpiderWrapper(scrapy.Spider):
 			meta = {}
 		for k in record:
 			meta[k] = record[k]				
+		meta['referer'] = url
 
 		# remove empty fields to insert to db
 		if conf.type == 'db':
@@ -543,7 +555,7 @@ class SpiderWrapper(scrapy.Spider):
 			elif step_config.type == "file":
 				yield self._parse_file_record(step_config, url, *result)
 			elif step_config.type == "http":
-				yield self._build_request(*result)
+				yield self._build_request(result[0], result[1], result[2], url)
 			else:
 				raise scrapy.exceptions.CloseSpider('undefined step type ' + step.config.type)
 
