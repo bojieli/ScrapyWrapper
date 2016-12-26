@@ -7,7 +7,7 @@ from urlparse import urljoin
 base_url = "http://www.sda.gov.cn/WS01/"
 
 class ScrapyConfig(ScrapyWrapperConfig):
-	begin_urls = ["CL1851/", "CL1852/", "CL1853/", "CL1854/", "CL1855/", "CL1856/"]
+	begin_urls = ["CL1033/", "CL1842/", "CL1043/", "CL1048/", "CL1282/", "CL1283/"]
 	steps = {
 		"begin": {
 			'req': {
@@ -17,8 +17,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_xpath': '//a/@href',
 				'selector_regex': '(\.\./CL[0-9]*/.*\.html)',
 				'next_step': 'content'
-			},
-			{
+			}, {
 				'selector_href_text_contains': u'下一页',
 				'next_step': 'begin'
 			}]
@@ -32,7 +31,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		},
 		"db": {
 			'type': "db",
-			'table_name': "DrugConsistencyEvaluation",
+			'table_name': "BusinessIntelligence",
 			'fields': [{
 				'name': "PublicationDate",
 				'selector_css': 'td.articletddate3',
@@ -50,7 +49,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'name': "ClassificationNumber",
 				'data_preprocessor': lambda result, meta: meta['referer'],
 				'selector_regex': '.*CL([0-9]*)',
-				'data_postprocessor': lambda n, meta: '1' if n == '1033' else '2' if n == '1842' or n == '1030' or n == '1031' else '3' if n == '1043' or n == '0885' or n ==     '0884' else '0'
+				'data_postprocessor': lambda n, meta: '1' if n == '1033' else '2' if n == '1842' or n == '1030' or n == '1031' else '3' if n == '1043' or n == '0885' or n == '0884' else '0'
 			}
 			]
 		}

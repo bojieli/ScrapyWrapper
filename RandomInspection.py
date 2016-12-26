@@ -3,18 +3,13 @@
 from scrapywrapper.wrapper import SpiderWrapper
 from scrapywrapper.config import ScrapyWrapperConfig
 
-base_url = "http://www.sda.gov.cn/WS01/CL1850/"
-
 class ScrapyConfig(ScrapyWrapperConfig):
-	begin_urls = [""]
+	begin_urls = ["http://www.sda.gov.cn/WS01/CL1850/"]
 	steps = {
 		"begin": {
-			'req': {
-				'url': lambda url, meta: base_url + url
-			},
 			'res': [{
 				'selector_xpath': '//a/@href',
-				'selector_regex': '(\.\./CL1760/.*\.html)',
+				'selector_regex': '(\.\./CL[0-9]*/.*\.html)',
 				'next_step': 'content'
 			},
 			{
@@ -23,9 +18,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}]
 		},
 		"content": {
-			'req': {
-				'url': lambda url, meta: base_url + url
-			},
 			'res': {
 				'selector_xpath': '/html/body/table[2]/tbody/tr/td/table',
 				'keep_html_tags': True,
@@ -54,7 +46,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': "CompanyName",
 				'selector_table_sibling': u'企业名称',
-				'required': True
 			}, {
 				'name': "CorporateRep",
 				'selector_table_sibling': u'企业法定代表人'
