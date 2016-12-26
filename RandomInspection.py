@@ -3,36 +3,45 @@
 from scrapywrapper.wrapper import SpiderWrapper
 from scrapywrapper.config import ScrapyWrapperConfig
 
+base_url = "http://www.sda.gov.cn/WS01/CL1850/"
+
 class ScrapyConfig(ScrapyWrapperConfig):
-	begin_urls = ["http://www.sda.gov.cn/WS01/CL1850/"]
+	begin_urls = [""]
 	steps = {
 		"begin": {
+			'req': {
+				'url': lambda url, meta: base_url + url
+			},
 			'res': [{
-				'selector_css': 'a::attr(href)',
+				'selector_xpath': '//a/@href',
 				'selector_regex': '(\.\./CL1760/.*\.html)',
 				'next_step': 'content'
 			},
 			{
-				'selector_href_text': u'下一页',
+				'selector_href_text_contains': u'下一页',
 				'next_step': 'begin'
 			}]
 		},
 		"content": {
+			'req': {
+				'url': lambda url, meta: base_url + url
+			},
 			'res': {
-				'selector_xpath': '/html/body/table/tr[2]/td/font/table',
+				'selector_xpath': '/html/body/table[2]/tbody/tr/td/table',
 				'keep_html_tags': True,
 				'next_step': 'db'
 			}
 		},
 		"db": {
 			'type': "db",
-			'table_name': "TcmSeedResource",
+			'table_name': "RandomInspection",
 			'fields': [{
 				'name': "DrugManufacturerID",
 				'reference': {
 					'field': "CompanyName",
 					'table': "TB_Resources_MedicineProductionUnit",
-					'remote_field': "CompanyName"
+					'remote_field': "CompanyName",
+					'remote_id_field': "ResID"
 				}
 			}, {
 				'name': "PublicationDate",
@@ -40,10 +49,12 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'data_type': "Date"
 			}, {
 				'name': "Headline",
-				'selector_css': '.articletitle3'
+				'selector_css': 'td.articletitle3',
+				'required': True
 			}, {
 				'name': "CompanyName",
-				'selector_table_sibling': u'企业名称'
+				'selector_table_sibling': u'企业名称',
+				'required': True
 			}, {
 				'name': "CorporateRep",
 				'selector_table_sibling': u'企业法定代表人'
@@ -89,5 +100,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 	}
 
 class Spider(SpiderWrapper):
+	name = 'RandomInspection'
 	config = ScrapyConfig()
 
