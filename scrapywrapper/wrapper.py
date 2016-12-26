@@ -17,6 +17,7 @@ import traceback
 import datetime
 from HTMLParser import HTMLParser
 from config import ScrapyWrapperConfig
+from urlparse import urljoin
 from .helper import ScrapyHelper, AttrDict
 
 class SpiderWrapper(scrapy.Spider):
@@ -63,6 +64,8 @@ class SpiderWrapper(scrapy.Spider):
 			req_conf = step_conf.req
 		else:
 			req_conf = {}
+		if referer:
+			url = urljoin(referer, url)
 		http_params = self._gen_http_params(url, req_conf, meta)
 
 		if http_params.method.lower() == 'post' and http_params.post_formdata:
@@ -261,15 +264,17 @@ class SpiderWrapper(scrapy.Spider):
 					result = self._strip_tags(res_conf, lxml.etree.tostring(matches[0]))
 			elif "selector_json" in res_conf:
 				obj = json.loads(result)
+				result = '' # default empty
 				levels = res_conf.selector_json.split('.')
 				next_objs = [ obj ]
 				for l in levels:
 					if l == '*':
-						next_objs = [ o.values() for o in next_objs ].flatten()
+						next_objs = [ o.values() for o in next_objs ]
+						next_objs = [ item for sublist in next_objs for item in sublist ]
 					else:
 						next_objs = [ o[l] for o in next_objs if l in o ]
 				for o in next_objs:
-					if type(o) is str:
+					if type(o) is str or type(o) is unicode:
 						result = o
 						break
 			else: # plain text
@@ -387,7 +392,7 @@ class SpiderWrapper(scrapy.Spider):
 				continue
 			parsed = self._parse_record_field(res_conf, result, meta)
 			if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
-				parsed = res_conf.data_preprocessor(parsed)
+				parsed = res_conf.data_preprocessor(parsed, meta)
 			if (parsed == None or len(parsed) == 0) and "required" in res_conf and res_conf.required:
 				print('Record parse error: required field ' + res_conf.name + ' does not exist')
 				return
@@ -411,7 +416,7 @@ class SpiderWrapper(scrapy.Spider):
 					except:
 						parsed = None
 			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
-				parsed = res_conf.data_postprocessor(parsed)
+				parsed = res_conf.data_postprocessor(parsed, meta)
 			if parsed:
 				record[res_conf.name] = HTMLParser().unescape(parsed)
 
