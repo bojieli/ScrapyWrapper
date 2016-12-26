@@ -162,12 +162,19 @@ class SpiderWrapper(scrapy.Spider):
 
 		try:
 			self._prepare_res_conf(res_conf)
-			if "parser" in res_conf and res_conf.parser == "js-string":
+			if "parser" in res_conf:
+				if res_conf.parser == "js-string":
 					from slimit import ast
 					from slimit.parser import Parser
 					from slimit.visitors import nodevisitor
 					tree = Parser().parse(response_text)
 					results = [ getattr(node, 'value') for node in nodevisitor.visit(tree) if isinstance(node, ast.String) ]
+				elif res_conf.parser == 'js-object':
+					m = re.search('var\s+[a-zA-Z0-9_$]+=\s+(.*)')
+					if not m:
+						results = []
+					else:
+						results = [ m.group(1) ]
 
 			elif "selector_xpath" in res_conf:
 				doc = lxml.html.fromstring(response_text)
@@ -244,12 +251,19 @@ class SpiderWrapper(scrapy.Spider):
 			return res_conf.value # fixed value
 		try:
 			self._prepare_res_conf(res_conf)
-			if "parser" in res_conf and res_conf.parser == "js-string":
+			if "parser" in res_conf:
+				if res_conf.parser == "js-string":
 					from slimit import ast
 					from slimit.parser import Parser
 					from slimit.visitors import nodevisitor
 					tree = Parser().parse(result)
 					result = [ getattr(node, 'value') for node in nodevisitor.visit(tree) if isinstance(node, ast.String) ][0]
+				elif res_conf.parser == 'js-object':
+					m = re.search('var\s+[a-zA-Z0-9_$]+=\s+(.*)')
+					if not m:
+						result = None
+					else:
+						result = m.group(1)
 					
 			elif "selector_xpath" in res_conf:
 				doc = lxml.html.fromstring(result)
