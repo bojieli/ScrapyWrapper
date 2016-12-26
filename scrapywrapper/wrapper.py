@@ -19,9 +19,14 @@ from HTMLParser import HTMLParser
 from config import ScrapyWrapperConfig
 from urlparse import urljoin
 from .helper import ScrapyHelper, AttrDict
+from .webkit_downloader import WebkitDownloader
 
 class SpiderWrapper(scrapy.Spider):
 	config = ScrapyWrapperConfig()
+
+	#DOWNLOADER_MIDDLEWARES = {
+    #	'scrapywrapper.webkit_downloader.WebkitDownloader': 1000,
+	#}
 
 	def start_requests(self):
 		self._check_config()
@@ -79,6 +84,10 @@ class SpiderWrapper(scrapy.Spider):
 		request.meta['$$meta'] = http_params.meta
 		request.meta['$$encoding'] = http_params.encoding
 		request.meta['$$referer'] = referer
+		if 'webview' in req_conf and req_conf['webview']:
+			request.meta['$$webview'] = True
+		else:
+			request.meta['$$webview'] = False
 		return request
 
 	def _to_attr_dict(self, c):
@@ -618,7 +627,12 @@ class SpiderWrapper(scrapy.Spider):
 			results = [ (response.body_as_unicode(), response.meta['$$step'], response.meta['$$meta']) ]
 
 		for req in self._yield_requests_from_parse_results(response.url, results):
-			yield req
+			if req.meta['$$webview']:
+				response = WebkitDownloader().process_request(req, None)
+				for req in _http_request_callback(response):
+					yield req
+			else:
+				yield req
 
 
 	def _insert_db_record(self, conf, url, row):

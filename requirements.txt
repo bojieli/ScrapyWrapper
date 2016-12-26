@@ -5,6 +5,6 @@ html2text
 lxml
 cssselect
 slimit
-gtk
+pygtk
 webkit
 jswebkit

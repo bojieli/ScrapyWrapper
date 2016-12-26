@@ -15,7 +15,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		},
 		"list": {
 			'req': {
-				'url': lambda url, meta: 'http://data.eastmoney.com/notices/stock/' + str(url) + '.html'
+				'url': lambda url, meta: 'http://data.eastmoney.com/notices/stock/' + str(url) + '.html',
+				'webview': True
 			},
 			'res': {
 				'selector_css': '#dt_1 tr',
@@ -74,4 +75,3 @@ class ScrapyConfig(ScrapyWrapperConfig):
 class Spider(SpiderWrapper):
 	name = 'PublicCompanyInfo'
 	config = ScrapyConfig()
-

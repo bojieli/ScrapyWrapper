@@ -5,7 +5,6 @@ import webkit
 import jswebkit
 
 class WebkitDownloader( object ):
-
     def stop_gtk(self, v, f):
         gtk.main_quit()
 
@@ -18,7 +17,7 @@ class WebkitDownloader( object ):
         return webview
 
     def process_request( self, request, spider ):
-        if 'renderjs' in request.meta:
+        if '$$webview' in request.meta and request.meta['$$webview']:
             webview = self._get_webview()
             webview.connect('load-finished', self.stop_gtk)
             webview.load_uri(request.url)
