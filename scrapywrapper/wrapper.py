@@ -64,18 +64,21 @@ class SpiderWrapper(scrapy.Spider):
 			req_conf = step_conf.req
 		else:
 			req_conf = {}
-		if referer:
-			url = urljoin(referer, url)
 		http_params = self._gen_http_params(url, req_conf, meta)
+
+		if referer:
+			if not url.startswith('http://') and not url.startswith('https://'):
+				url = urljoin(referer, url)
 
 		if http_params.method.lower() == 'post' and http_params.post_formdata:
 			request = scrapy.FormRequest(url=http_params.url, method=http_params.method, headers=http_params.headers, formdata=http_params.post_formdata, cookies=http_params.cookies, encoding=http_params.encoding, callback=self._http_request_callback)
 		else:
 			request = scrapy.Request(url=http_params.url, method=http_params.method, headers=http_params.headers, body=http_params.post_rawdata, cookies=http_params.cookies, encoding=http_params.encoding, callback=self._http_request_callback)
-		request.meta['step'] = curr_step
-		request.meta['meta'] = http_params.meta
-		request.meta['encoding'] = http_params.encoding
-		request.meta['referer'] = referer
+
+		request.meta['$$step'] = curr_step
+		request.meta['$$meta'] = http_params.meta
+		request.meta['$$encoding'] = http_params.encoding
+		request.meta['$$referer'] = referer
 		return request
 
 	def _to_attr_dict(self, c):
@@ -230,10 +233,10 @@ class SpiderWrapper(scrapy.Spider):
 		return self._mangle_text_results(text_results, res_conf, meta)
 
 	def _parse_http_response(self, response, res_conf):
-		meta = response.meta['meta']
+		meta = response.meta['$$meta']
 		if meta is None:
 			meta = {}
-		meta['encoding'] = response.meta['encoding']
+		meta['$$encoding'] = response.meta['$$encoding']
 		return self._parse_and_mangle_text_response(response.body_as_unicode(), res_conf, meta)
 
 	def _parse_record_field(self, res_conf, result, meta):
@@ -373,6 +376,7 @@ class SpiderWrapper(scrapy.Spider):
 		return None
 
 	def _parse_int(self, text):
+		text = text.replace(',', '')
 		try:
 			return int(text)
 		except:
@@ -384,6 +388,11 @@ class SpiderWrapper(scrapy.Spider):
 
 		reference_fields = []
 		record = {}
+		# populate record with meta
+		if type(meta) is dict:
+			for k in meta:
+				record[k] = meta[k]				
+
 		if "fields" not in conf:
 			conf.fields = []
 		for res_conf in conf.fields:
@@ -405,14 +414,14 @@ class SpiderWrapper(scrapy.Spider):
 					parsed = self._parse_date(parsed)
 				elif res_conf.data_type == "float":
 					try:
-						parsed = str(float(parsed))
+						parsed = str(float(parsed.replace(',', '')))
 					except:
 						parsed = str(self._parse_int(parsed))
 				elif res_conf.data_type == "int":
 					parsed = str(self._parse_int(parsed))
 				elif res_conf.data_type == "percentage":
 					try:
-						parsed = str(float(parsed.strip('%')) / 100)
+						parsed = str(float(parsed.strip('%')))
 					except:
 						parsed = None
 			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
@@ -434,18 +443,16 @@ class SpiderWrapper(scrapy.Spider):
 			meta = {}
 		for k in record:
 			meta[k] = record[k]				
-		meta['referer'] = url
+		meta['$$referer'] = url
 
 		# remove empty fields to insert to db
 		if conf.type == 'db':
 			for res_conf in conf.fields:
 				if res_conf.name in record and record[res_conf.name] is None:
 					del record[res_conf.name]
-				if "skip" in res_conf and res_conf.skip:
-					del record[res_conf.name]
 			data_guid = self._insert_db_record(conf, url, record)
-			meta['info_id'] = data_guid
-			meta['info_table'] = conf.table_name
+			meta['$$info_id'] = data_guid
+			meta['$$info_table'] = conf.table_name
 
 		return (result, curr_step, meta)
 
@@ -513,16 +520,16 @@ class SpiderWrapper(scrapy.Spider):
 		else:
 			raise scrapy.exceptions.CloseSpider('undefined record type ' + conf.type)
 
-		db_conf = response.meta['conf']
+		db_conf = response.meta['$$conf']
 		record = {}
 		record[db_conf.path_field] = filepath
-		record[db_conf.info_id_field] = response.meta['info_id']
-		record[db_conf.info_table_field] = response.meta['info_table']
+		record[db_conf.info_id_field] = response.meta['$$info_id']
+		record[db_conf.info_table_field] = response.meta['$$info_table']
 		self._insert_db_record(db_conf, response.url, record)
 
 		if "res" in db_conf:
 			meta = record
-			meta.referer = response.url
+			meta['$$referer'] = response.url
 
 			res_conf = db_conf.res
 			if type(res_conf) is list:
@@ -536,11 +543,25 @@ class SpiderWrapper(scrapy.Spider):
 
 	def _parse_file_record(self, conf, referer, url, curr_step, meta):
 		req = scrapy.Request(url=url, callback=self._parse_file_record_callback)
-		req.meta['referer'] = referer
-		req.meta['conf'] = conf
-		req.meta['info_id'] = meta.info_id
-		req.meta['info_table'] = meta.info_table
+		req.meta['$$referer'] = referer
+		req.meta['$$conf'] = conf
+		req.meta['$$info_id'] = meta.info_id
+		req.meta['$$info_table'] = meta.info_table
 		return req
+
+	def _forge_http_response_for_intermediate(self, conf, url, result):
+		response = AttrDict()
+		response.url = url
+		response.meta = dict()
+		response.meta['$$meta'] = result[2]
+		response.meta['$$step'] = result[1]
+		response.meta['$$conf'] = conf
+		response.meta['$$encoding'] = response.meta['$$encoding'] if '$$encoding' in response.meta else None
+		response.meta['$$referer'] = result[2]['$$referer'] if '$$referer' in result[2] else None
+		response.body = result[0]
+		print(response.body.encode('utf-8'))
+		response.body_as_unicode = lambda: response.body
+		return response
 
 	def _yield_requests_from_parse_results(self, url, results):
 		for result in results:
@@ -561,12 +582,15 @@ class SpiderWrapper(scrapy.Spider):
 				yield self._parse_file_record(step_config, url, *result)
 			elif step_config.type == "http":
 				yield self._build_request(result[0], result[1], result[2], url)
+			elif step_config.type == "intermediate":
+				for req in self._http_request_callback(self._forge_http_response_for_intermediate(step_config, url, result)):
+					yield req
 			else:
 				raise scrapy.exceptions.CloseSpider('undefined step type ' + step.config.type)
 
 
 	def _http_request_callback(self, response):
-		step_conf = self.config.steps[response.meta['step']]
+		step_conf = self.config.steps[response.meta['$$step']]
 		results = []
 		if "res" in step_conf:
 			if callable(step_conf.res):
@@ -577,7 +601,7 @@ class SpiderWrapper(scrapy.Spider):
 			else:
 				results = self._parse_http_response(response, step_conf.res)
 		else:
-			results = [ (response.body_as_unicode(), response.meta['step'], response.meta['meta']) ]
+			results = [ (response.body_as_unicode(), response.meta['$$step'], response.meta['$$meta']) ]
 
 		for req in self._yield_requests_from_parse_results(response.url, results):
 			yield req
@@ -589,7 +613,12 @@ class SpiderWrapper(scrapy.Spider):
 		# data tab;e
 		data_guid = str(uuid.uuid4())
 		row[conf.guid_field] = data_guid
-		self.insert_row(conf.table_name, row)
+		# remove internal metadata fields
+		new_row = {}
+		for k in row:
+			if not k.startswith('$$'):
+				new_row[k] = row[k]
+		self.insert_row(conf.table_name, new_row)
 		# url table
 		url_row = {}
 		url_row[conf.guid_field] = str(uuid.uuid4())
