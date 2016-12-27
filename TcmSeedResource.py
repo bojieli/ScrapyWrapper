@@ -7,13 +7,19 @@ class ScrapyConfig(ScrapyWrapperConfig):
 	begin_urls = ["http://124.254.6.83:8088/querymain.asp"]
 	steps = {
 		"begin": {
+			'req': {
+				'encoding': 'gb2312'
+			},
 			'res': {
-				'selector_css': 'a::attr(href)',
-				'selector_regex': '(show.asp?.*)',
-				'next_step': 'content'
+				'selector_xpath': '//a/@href',
+				'selector_regex': u'(show.asp\?.*)',
+				'next_step': 'content',
 			}
 		},
 		"content": {
+			'req': {
+				'encoding': 'gb2312'
+			},
 			'res': [{
 				'selector_xpath': '/html/body/table/tr[2]/td/font/table',
 				'keep_html_tags': True,
@@ -28,7 +34,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'type': "db",
 			'table_name': "TcmSeedResource",
 			'fields': [
-{ 'name': "TcmID", 'selector_table_sibling': u"药材ID", 'required': True },
 { 'name': "TcmSeedName", 'selector_table_sibling': u"种质名称", 'required': True },
 { 'name': "TcmSeedEnglishName", 'selector_table_sibling': u"种质外文名" },
 { 'name': "PlatformResNumber", 'selector_table_sibling': u"平台资源号" },
@@ -39,9 +44,9 @@ class ScrapyConfig(ScrapyWrapperConfig):
 { 'name': "PlantGenusEnglishName", 'selector_table_sibling': u"属名", 'selector_regex': '(.*)（.*）' },
 { 'name': "TcmName", 'selector_table_sibling': u"种名", 'selector_regex': '（(.*)）' },
 { 'name': "TcmEnglishName", 'selector_table_sibling': u"种名", 'selector_regex': '(.*)（.*）' },
-{ 'name': "PlaceOfOriginID", 'reference': { 'field': 'PlaceOfOrigin', 'table': 'OriginTable', 'remote_field': 'Name', 'match': 'lpm' } },
+{ 'name': "PlaceOfOriginID", 'reference': { 'field': 'PlaceOfOrigin', 'table': 'TB_Addresses', 'remote_field': 'Name', 'remote_id_field': 'PID', 'match': 'lpm' } },
 { 'name': "PlaceOfOrigin", 'selector_table_sibling': u"原产地" },
-{ 'name': "SourceLocationID", 'reference': { 'field': 'SourceLocation', 'table': 'OriginTable', 'remote_field': 'Name', 'match': 'lpm' } },
+{ 'name': "SourceLocationID", 'reference': { 'field': 'SourceLocation', 'table': 'TB_Addresses', 'remote_field': 'Name', 'remote_id_field': 'PID', 'match': 'lpm' } },
 { 'name': "SourceLocation", 'selector_table_sibling': u"来源地" },
 { 'name': "ResourceClassificationNumber", 'selector_table_sibling': u"资源归类编码" },
 { 'name': "ResourceType", 'selector_table_sibling': u"资源类型" },
@@ -56,13 +61,13 @@ class ScrapyConfig(ScrapyWrapperConfig):
 { 'name': "Pedigree", 'selector_table_sibling': u"系谱" },
 { 'name': "SeedSeletionOrg", 'selector_table_sibling': u"选育单位" },
 { 'name': "SeedSeletionYear", 'selector_table_sibling': u"选育年份" },
-{ 'name': "Altitude", 'selector_table_sibling': u"海拔" },
-{ 'name': "Longitude", 'selector_table_sibling': u"经度" },
-{ 'name': "Latitude", 'selector_table_sibling': u"纬度" },
+{ 'name': "Altitude", 'selector_table_sibling': u"海拔", 'data_type': 'float' },
+{ 'name': "Longitude", 'selector_table_sibling': u"经度", 'data_type': 'float' },
+{ 'name': "Latitude", 'selector_table_sibling': u"纬度", 'data_type': 'float' },
 { 'name': "SoilType", 'selector_table_sibling': u"土壤类型" },
 { 'name': "Ecosystemtype", 'selector_table_sibling': u"生态系统类型" },
-{ 'name': "AnnualAverageTemperature", 'selector_table_sibling': u"年均温度" },
-{ 'name': "AnnualAveragePrecipitation", 'selector_table_sibling': u"年均降雨量" },
+{ 'name': "AnnualAverageTemperature", 'selector_table_sibling': u"年均温度", 'data_type': 'float' },
+{ 'name': "AnnualAveragePrecipitation", 'selector_table_sibling': u"年均降雨量", 'data_type': 'float' },
 { 'name': "RecordLocation", 'selector_table_sibling': u"记录地址" },
 { 'name': "ConservationOrg", 'selector_table_sibling': u"保存单位" },
 { 'name': "OrgNumber", 'selector_table_sibling': u"单位编号" },
@@ -76,7 +81,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 { 'name': "ShareType", 'selector_table_sibling': u"共享方式" },
 { 'name': "AcquireMethod", 'selector_table_sibling': u"获取途径" },
 { 'name': "ContactInfo", 'selector_table_sibling': u"联系方式" },
-{ 'name': "GenuineProducingAreaID", 'reference': { 'field': 'GenuineProducingArea', 'table': 'OriginTable', 'remote_field': 'Name', 'match': 'lpm' } },
 { 'name': "GenuineProducingArea", 'selector_table_sibling': u"道地产区" },
 { 'name': "PlantHeight", 'selector_table_sibling': u"株高" },
 { 'name': "LeafShape", 'selector_table_sibling': u"叶形" },
@@ -89,23 +93,23 @@ class ScrapyConfig(ScrapyWrapperConfig):
 { 'name': "FruitShape", 'selector_table_sibling': u"果实形状" },
 { 'name': "FruitColor", 'selector_table_sibling': u"果实颜色" },
 { 'name': "FruitSize", 'selector_table_sibling': u"果实大小" },
-{ 'name': "FruitWeight", 'selector_table_sibling': u"单果重" },
+{ 'name': "FruitWeight", 'selector_table_sibling': u"单果重", 'data_type': 'float' },
 { 'name': "PersistentCalyx", 'selector_table_sibling': u"宿存萼" },
-{ 'name': "BladeNumber", 'selector_table_sibling': u"叶片数" },
-{ 'name': "TuberWeight", 'selector_table_sibling': u"块茎重" },
-{ 'name': "StemDiameter", 'selector_table_sibling': u"茎粗" },
-{ 'name': "Tiller", 'selector_table_sibling': u"分蘖" },
-{ 'name': "EffectiveLing", 'selector_table_sibling': u"有效苓" },
-{ 'name': "StemWidth", 'selector_table_sibling': u"茎宽" },
-{ 'name': "StemLength", 'selector_table_sibling': u"茎长" },
+{ 'name': "BladeNumber", 'selector_table_sibling': u"叶片数", 'data_type': 'float' },
+{ 'name': "TuberWeight", 'selector_table_sibling': u"块茎重", 'data_type': 'float' },
+{ 'name': "StemDiameter", 'selector_table_sibling': u"茎粗", 'data_type': 'float' },
+{ 'name': "Tiller", 'selector_table_sibling': u"分蘖", 'data_type': 'float' },
+{ 'name': "EffectiveLing", 'selector_table_sibling': u"有效苓", 'data_type': 'float' },
+{ 'name': "StemWidth", 'selector_table_sibling': u"茎宽", 'data_type': 'float' },
+{ 'name': "StemLength", 'selector_table_sibling': u"茎长", 'data_type': 'float' },
 { 'name': "PrecedingCrop", 'selector_table_sibling': u"前作物" },
-{ 'name': "CurrentYield", 'selector_table_sibling': u"产量" },
+{ 'name': "CurrentYield", 'selector_table_sibling': u"产量", 'data_type': 'float' },
 { 'name': "SeedShape", 'selector_table_sibling': u"种子形状" },
 { 'name': "SeedColor", 'selector_table_sibling': u"种子颜色" },
-{ 'name': "ThousandSeedWeight", 'selector_table_sibling': u"种子千粒重" },
-{ 'name': "SeedWaterContent", 'selector_table_sibling': u"种子含水量" },
-{ 'name': "SeedGerminationRate", 'selector_table_sibling': u"种子发芽率" },
-{ 'name': "SeedGerminationPotential", 'selector_table_sibling': u"种子发芽势" },
+{ 'name': "ThousandSeedWeight", 'selector_table_sibling': u"种子千粒重", 'data_type': 'float' },
+{ 'name': "SeedWaterContent", 'selector_table_sibling': u"种子含水量", 'data_type': 'float' },
+{ 'name': "SeedGerminationRate", 'selector_table_sibling': u"种子发芽率", 'data_type': 'float' },
+{ 'name': "SeedGerminationPotential", 'selector_table_sibling': u"种子发芽势", 'data_type': 'float' },
 { 'name': "SowingPeriod", 'selector_table_sibling': u"播种期" },
 { 'name': "TransplantingPeriod", 'selector_table_sibling': u"移栽期" },
 { 'name': "GrowingPeriod", 'selector_table_sibling': u"生长期" },
@@ -148,7 +152,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 { 'name': "ChemicalFingerprintSpectrum", 'selector_table_sibling': u"化学指纹图谱" }
 			],
 			'res': {
-				'selector_xpath': '/tbody/tr[2]/td/font/table/tbody/tr[8]/td[8]/a',
+				'selector_xpath': '//tr[8]/td[8]/a',
 				'selector_regex': '([A-Za-z0-9-].jpg)',
 				'data_postprocessor': lambda filename: 'http://124.254.6.83:8088/photo/' + filename,
 				'next_step': 'image'
@@ -165,5 +169,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 	}
 
 class Spider(SpiderWrapper):
+	name = 'TcmSeedResource'
 	config = ScrapyConfig()
 

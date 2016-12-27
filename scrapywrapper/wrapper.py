@@ -71,9 +71,10 @@ class SpiderWrapper(scrapy.Spider):
 			req_conf = {}
 		http_params = self._gen_http_params(url, req_conf, meta)
 
+		if http_params.encoding != 'utf-8':
+			http_params.url = http_params.url.decode('utf-8').encode(http_params.encoding)
 		if referer:
-			if not url.startswith('http://') and not url.startswith('https://'):
-				url = urljoin(referer, url)
+			http_params.url = urljoin(referer, http_params.url)
 
 		if http_params.method.lower() == 'post' and http_params.post_formdata:
 			request = scrapy.FormRequest(url=http_params.url, method=http_params.method, headers=http_params.headers, formdata=http_params.post_formdata, cookies=http_params.cookies, encoding=http_params.encoding, callback=self._http_request_callback)
@@ -204,20 +205,23 @@ class SpiderWrapper(scrapy.Spider):
 				return [ ' '.join(col) for col in matrix ]
 
 			elif "selector_xpath" in res_conf:
-				doc = lxml.html.fromstring(response_text)
-				if type(res_conf.selector_xpath) is list:
-					for p in res_conf.selector_xpath:
-						for m in doc.xpath(p):
+				doc = lxml.html.fromstring(response_text.decode())
+				try:
+					if type(res_conf.selector_xpath) is list:
+						for p in res_conf.selector_xpath:
+							for m in doc.xpath(p):
+								try:
+									results.append(self._strip_tags(res_conf, lxml.etree.tostring(m)))
+								except:
+									results.append(self._strip_tags(res_conf, str(m)))
+					else:
+						for m in doc.xpath(res_conf.selector_xpath):
 							try:
 								results.append(self._strip_tags(res_conf, lxml.etree.tostring(m)))
 							except:
 								results.append(self._strip_tags(res_conf, str(m)))
-				else:
-					for m in doc.xpath(res_conf.selector_xpath):
-						try:
-							results.append(self._strip_tags(res_conf, lxml.etree.tostring(m)))
-						except:
-							results.append(self._strip_tags(res_conf, str(m)))
+				except:
+					raise scrapy.exception.CloseSpider('invalid selector_xpath ' + str(res_conf.selector_xpath))
 
 			elif "selector_json" in res_conf:
 				obj = json.loads(response_text)
@@ -272,7 +276,12 @@ class SpiderWrapper(scrapy.Spider):
 		if meta is None:
 			meta = {}
 		meta['$$encoding'] = response.meta['$$encoding']
-		return self._parse_and_mangle_text_response(response.body_as_unicode(), res_conf, meta)
+		try:
+			if response.meta['$$encoding']:
+				body = response.body.decode(response.meta['$$encoding']).encode('utf-8')
+		except:
+			body = response.body_as_unicode()
+		return self._parse_and_mangle_text_response(body, res_conf, meta)
 
 	def _parse_record_field(self, res_conf, result, meta):
 		if "value" in res_conf:
@@ -610,7 +619,6 @@ class SpiderWrapper(scrapy.Spider):
 		response.meta['$$encoding'] = response.meta['$$encoding'] if '$$encoding' in response.meta else None
 		response.meta['$$referer'] = result[2]['$$referer'] if '$$referer' in result[2] else None
 		response.body = result[0]
-		print(response.body.encode('utf-8'))
 		response.body_as_unicode = lambda: response.body
 		return response
 
