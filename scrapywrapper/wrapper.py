@@ -226,14 +226,19 @@ class SpiderWrapper(scrapy.Spider):
 			elif "selector_json" in res_conf:
 				obj = json.loads(response_text)
 				levels = res_conf.selector_json.split('.')
-				next_objs = [ obj ]
+				if type(obj) is list:
+					next_objs = obj
+				else:
+					next_objs = [ obj ]
 				for l in levels:
-					if l == '*':
+					if l == '':
+						continue
+					elif l == '*':
 						next_objs = [ o.values() for o in next_objs ]
 						next_objs = [ item for sublist in next_objs for item in sublist ]
 					else:
 						next_objs = [ o[l] for o in next_objs if l in o ]
-				results = [ o for o in next_objs if type(o) is str ]
+				results = [ json.dumps(o) for o in next_objs ]
 			else: # plain text
 				results = [ response_text ]
 
@@ -279,6 +284,8 @@ class SpiderWrapper(scrapy.Spider):
 		try:
 			if response.meta['$$encoding']:
 				body = response.body.decode(response.meta['$$encoding']).encode('utf-8')
+			else:
+				body = response.body_as_unicode()
 		except:
 			body = response.body_as_unicode()
 		return self._parse_and_mangle_text_response(body, res_conf, meta)
@@ -317,20 +324,24 @@ class SpiderWrapper(scrapy.Spider):
 				else:
 					result = self._strip_tags(res_conf, lxml.etree.tostring(matches[0]))
 			elif "selector_json" in res_conf:
-				obj = json.loads(result)
-				result = '' # default empty
-				levels = res_conf.selector_json.split('.')
-				next_objs = [ obj ]
-				for l in levels:
-					if l == '*':
-						next_objs = [ o.values() for o in next_objs ]
-						next_objs = [ item for sublist in next_objs for item in sublist ]
-					else:
-						next_objs = [ o[l] for o in next_objs if l in o ]
-				for o in next_objs:
-					if type(o) is str or type(o) is unicode:
-						result = o
-						break
+				try:
+					obj = json.loads(result)
+					result = '' # default empty
+					levels = res_conf.selector_json.split('.')
+					next_objs = [ obj ]
+					for l in levels:
+						if l == '*':
+							next_objs = [ o.values() for o in next_objs ]
+							next_objs = [ item for sublist in next_objs for item in sublist ]
+						else:
+							next_objs = [ o[l] for o in next_objs if l in o ]
+					for o in next_objs:
+						if type(o) is str or type(o) is unicode:
+							result = o
+							break
+				except:
+					print('selector_json failed: ' + result)
+					pass
 			else: # plain text
 				pass
 
