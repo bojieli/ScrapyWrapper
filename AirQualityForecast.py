@@ -1,6 +1,6 @@
 #/usr/bin/python
 # -*- coding:utf-8 -*-
-from scrapywrapper.wrapper import SpiderWrapper
+from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
 import datetime
 
@@ -59,7 +59,5 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		}
 	}
 
-class Spider(SpiderWrapper):
-	name = 'PublicCompanyInfo'
-	config = ScrapyConfig()
+myspider = SpiderFactory(ScrapyConfig(), __name__)
 
