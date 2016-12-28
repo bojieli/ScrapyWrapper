@@ -12,7 +12,6 @@ import mimetypes
 import lxml
 import cssselect
 import html2text
-import htmlentities
 import traceback
 import datetime
 from HTMLParser import HTMLParser
@@ -21,13 +20,9 @@ from urlparse import urljoin
 from .helper import ScrapyHelper, AttrDict
 from .webkit_downloader import WebkitDownloader
 
+utf8_parser = lxml.etree.HTMLParser(encoding='utf-8')
+
 class SpiderWrapper(scrapy.Spider):
-	config = ScrapyWrapperConfig()
-
-	#DOWNLOADER_MIDDLEWARES = {
-    #	'scrapywrapper.webkit_downloader.WebkitDownloader': 1000,
-	#}
-
 	def start_requests(self):
 		self._check_config()
 		self._init_db()
@@ -102,8 +97,6 @@ class SpiderWrapper(scrapy.Spider):
 
 	def _check_config(self):
 		c = self.config
-		c.proxy = AttrDict(c.proxy)
-		c.custom_settings = AttrDict(c.custom_settings)
 		c.db = AttrDict(c.db)
 		c.file_storage = AttrDict(c.file_storage)
 		c.url_table = AttrDict(c.url_table)
@@ -126,12 +119,17 @@ class SpiderWrapper(scrapy.Spider):
 			cols[row['COLUMN_NAME']] = row['TYPE_NAME']
 		return cols
 
-	def _strip_tags(self, res_conf, text):
-		if "keep_html_tags" in res_conf and res_conf.keep_html_tags:
+	def _strip_tags(self, res_conf, text, default_strip=False):
+		to_strip = default_strip
+		if "strip_tags" in res_conf and res_conf.strip_tags:
+			to_strip = True
+
+		if to_strip:
+			convertor = html2text.HTML2Text()
+			convertor.ignore_links = True
+			return convertor.handle(text).strip()
+		else:
 			return text.strip()
-		convertor = html2text.HTML2Text()
-		convertor.ignore_links = True
-		return htmlentities.decode(convertor.handle(text).strip())
 
 	def _prepare_res_conf(self, res_conf):
 		if "selector_css" in res_conf:
@@ -143,12 +141,20 @@ class SpiderWrapper(scrapy.Spider):
 			res_conf.selector_xpath = '//*[contains(text(), "' + res_conf.selector_contains + '")]'
 			del res_conf.selector_contains
 
-		if "selector_table_sibling" in res_conf:
+		if "selector_table_sibling_contains" in res_conf:
 			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[contains(text(), "' + res_conf.selector_table_sibling + '")]]/following-sibling::td'
 			del res_conf.selector_table_sibling
 
-		if "selector_table_next_row" in res_conf:
+		if "selector_table_sibling" in res_conf:
+			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[text()="' + res_conf.selector_table_sibling + '"]]/following-sibling::td'
+			del res_conf.selector_table_sibling
+
+		if "selector_table_next_row_contains" in res_conf:
 			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[contains(text(), "' + res_conf.selector_table_next_row + '")]]/ancestor::tr/following-sibling::tr/td'
+			del res_conf.selector_table_next_row
+
+		if "selector_table_next_row" in res_conf:
+			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[text()="' + res_conf.selector_table_next_row + '"]]/ancestor::tr/following-sibling::tr/td'
 			del res_conf.selector_table_next_row
 
 		if "selector_href_text" in res_conf:
@@ -187,14 +193,14 @@ class SpiderWrapper(scrapy.Spider):
 						results = [ m.group(1) ]
 
 			elif "selector_matrix" in res_conf:
-				doc = lxml.html.fromstring(response_text)
+				doc = lxml.html.fromstring(response_text, parser=utf8_parser)
 				matrix = []
 				for row in doc.xpath('//tr'):
 					col_count = 0
 					for col in row.xpath('.//td|.//th'):
 						if len(matrix) <= col_count:
 							matrix.append([])
-						matrix[col_count].append(lxml.etree.tostring(col))
+						matrix[col_count].append(lxml.etree.tostring(col, encoding=unicode))
 						col_count += 1
 
 				try:
@@ -205,21 +211,25 @@ class SpiderWrapper(scrapy.Spider):
 				return [ ' '.join(col) for col in matrix ]
 
 			elif "selector_xpath" in res_conf:
-				doc = lxml.html.fromstring(response_text.decode())
+				if "keep_entities" in res_conf and res.keep_entities:
+					pass
+				else:
+					response_text = HTMLParser().unescape(response_text)
+				doc = lxml.html.fromstring(response_text, parser=utf8_parser)
 				try:
 					if type(res_conf.selector_xpath) is list:
 						for p in res_conf.selector_xpath:
 							for m in doc.xpath(p):
 								try:
-									results.append(self._strip_tags(res_conf, lxml.etree.tostring(m)))
+									results.append(self._strip_tags(res_conf, lxml.etree.tostring(m, encoding=unicode), default_strip=False))
 								except:
-									results.append(self._strip_tags(res_conf, str(m)))
+									results.append(self._strip_tags(res_conf, str(m), default_strip=False))
 					else:
 						for m in doc.xpath(res_conf.selector_xpath):
 							try:
-								results.append(self._strip_tags(res_conf, lxml.etree.tostring(m)))
+								results.append(self._strip_tags(res_conf, lxml.etree.tostring(m, encoding=unicode), default_strip=False))
 							except:
-								results.append(self._strip_tags(res_conf, str(m)))
+								results.append(self._strip_tags(res_conf, str(m), default_strip=False))
 				except:
 					raise scrapy.exception.CloseSpider('invalid selector_xpath ' + str(res_conf.selector_xpath))
 
@@ -265,9 +275,8 @@ class SpiderWrapper(scrapy.Spider):
 		for text_result in text_results:
 			result = (text_result, res_conf.next_step, meta)
 			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
-				mangled = res_conf.data_postprocessor(result)
-				if mangled:
-					results.append(mangled)
+				mangled = res_conf.data_postprocessor(text_result, meta)
+				results.append((mangled, res_conf.next_step, meta))
 			else:
 				results.append(result)
 		return results
@@ -280,6 +289,8 @@ class SpiderWrapper(scrapy.Spider):
 		meta = response.meta['$$meta']
 		if meta is None:
 			meta = {}
+		meta['$$referer'] = response.meta['$$referer']
+		meta['$$url'] = response.url
 		meta['$$encoding'] = response.meta['$$encoding']
 		try:
 			if response.meta['$$encoding']:
@@ -310,7 +321,7 @@ class SpiderWrapper(scrapy.Spider):
 						result = m.group(1)
 					
 			elif "selector_xpath" in res_conf:
-				doc = lxml.html.fromstring(result)
+				doc = lxml.html.fromstring(result, parser=utf8_parser)
 				matches = []
 				if type(res_conf.selector_xpath) is list:
 					for p in res_conf.selector_xpath:
@@ -322,7 +333,7 @@ class SpiderWrapper(scrapy.Spider):
 				if len(matches) == 0:
 					result = ""
 				else:
-					result = self._strip_tags(res_conf, lxml.etree.tostring(matches[0]))
+					result = self._strip_tags(res_conf, lxml.etree.tostring(matches[0], encoding=unicode), default_strip=True)
 			elif "selector_json" in res_conf:
 				try:
 					obj = json.loads(result)
@@ -375,7 +386,7 @@ class SpiderWrapper(scrapy.Spider):
 			try:
 				local_data = record[res_conf.reference.field]
 				if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
-					local_data = res_conf.data_preprocessor(local_data)
+					local_data = res_conf.data_preprocessor(local_data, record)
 				local_data = [ local_data ]
 			except KeyError:
 				return False
@@ -383,7 +394,7 @@ class SpiderWrapper(scrapy.Spider):
 			try:
 				local_data = [ record[f] for f in res_conf.reference.fields ]
 				if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
-					local_data = res_conf.data_preprocessor(local_data)
+					local_data = res_conf.data_preprocessor(local_data, record)
 			except KeyError:
 				return False
 		else:
@@ -422,25 +433,40 @@ class SpiderWrapper(scrapy.Spider):
 		else:
 			return False
 
+	def _make_date_string(self, year, month, day):
+		return ("%04d" % int(year)) + '-' + ("%02d" % int(month)) + '-' + ("%02d" % int(day))
+
 	def _parse_date(self, text):
-		m = re.search(u'^([0-9]{4})年([0-9]{2})月([0-9]{2})日$', text)
+		m = re.search(u'^([0-9]{4})年([0-9]{1,2})月([0-9]{1,2})日$', text)
 		if m:
-			return m.group(1) + '-' + m.group(2) + '-' + m.group(3)
-		m = re.search('^([0-9]{4})-([0-9]{2})-([0-9]{2})$', text)
+			return self._make_date_string(m.group(1), m.group(2), m.group(3))
+		m = re.search('^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})$', text)
 		if m:
-			return text
-		m = re.search('^([0-9]{2})-([0-9]{2})-([0-9]{2})$', text)
+			return self._make_date_string(m.group(1), m.group(2), m.group(3))
+		m = re.search('^([0-9]{2})-([0-9]{1,2})-([0-9]{1,2})$', text)
 		if m:
-			return '20' + text
-		m = re.search('^([0-9]{4})/([0-9]{2})/([0-9]{2})$', text)
+			if int(m.group(1)) >= '70': # 1970 - 1999
+				return self._make_date_string('19' + m.group(1), m.group(2), m.group(3))
+			else: # >= 2000
+				return self._make_date_string('20' + m.group(1), m.group(2), m.group(3))
+		m = re.search('^([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})$', text)
 		if m:
-			return m.group(1) + '-' + m.group(2) + '-' + m.group(3)
-		m = re.search('^([0-9]{2})/([0-9]{2})/([0-9]{4})$', text)
+			return self._make_date_string(m.group(1), m.group(2), m.group(3))
+		m = re.search('^([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})$', text)
 		if m:
-			return m.group(3) + '-' + m.group(1) + '-' + m.group(2)
-		m = re.search('^([0-9]{2})/([0-9]{2})/([0-9]{2})$', text)
+			return self._make_date_string(m.group(3), m.group(1), m.group(2))
+		m = re.search('^([0-9]{1,2})/([0-9]{1,2})/([0-9]{2})$', text)
 		if m:
-			return '20' + m.group(3) + '-' + m.group(1) + '-' + m.group(2)
+			if int(m.group(1)) >= '70': # 1970 - 1999
+				return self._make_date_string('19' + m.group(3), m.group(1), m.group(2))
+			else: # >= 2000
+				return self._make_date_string('20' + m.group(3), m.group(1), m.group(2))
+		m = re.search(u'^([0-9]{4})年([0-9]{1,2})月$', text)
+		if m:
+			return self._make_date_string(m.group(1), m.group(2), 1)
+		m = re.search(u'^([0-9]{4})年$', text)
+		if m:
+			return self._make_date_string(m.group(1), 1, 1)
 		return None
 
 	def _parse_int(self, text):
@@ -460,6 +486,7 @@ class SpiderWrapper(scrapy.Spider):
 		if type(meta) is dict:
 			for k in meta:
 				record[k] = meta[k]				
+		meta['$$referer'] = url
 
 		if "fields" not in conf:
 			conf.fields = []
@@ -497,7 +524,7 @@ class SpiderWrapper(scrapy.Spider):
 			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
 				parsed = res_conf.data_postprocessor(parsed, meta)
 			if parsed:
-				record[res_conf.name] = HTMLParser().unescape(parsed)
+				record[res_conf.name] = parsed
 
 		for res_conf in reference_fields:
 			status = self._parse_reference_field(res_conf, record)
@@ -514,7 +541,6 @@ class SpiderWrapper(scrapy.Spider):
 			meta = {}
 		for k in record:
 			meta[k] = record[k]				
-		meta['$$referer'] = url
 
 		# remove empty fields to insert to db
 		if conf.type == 'db':
@@ -701,6 +727,7 @@ class SpiderWrapper(scrapy.Spider):
 		url_row[self.config.url_table.url_field] = url
 		url_row[self.config.url_table.time_field] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 		self.insert_row(self.config.url_table.name, url_row)
+		print(url_row[self.config.url_table.time_field] + " [" + self.name + "] Inserted one db record to table " + conf.table_name + " (URL: " + url + " )")
 		return data_guid
 
 	def insert_row(self, table_name, row):
@@ -724,4 +751,18 @@ class SpiderWrapper(scrapy.Spider):
 
 	def insert_one_with_type(self, table_name, fields, value_types, table_data):
 		self.insert_many_with_type(table_name, fields, value_types, [table_data])
+
+
+
+def SpiderFactory(config, module_name):
+	class_dict = {
+		"name": module_name,
+		"config": config,
+		"__module__": module_name
+	}
+	copy_attrs = ["custom_settings", "crawlera_enabled", "crawlera_apikey"]
+	for a in copy_attrs:
+		if hasattr(config, a):
+			class_dict[a] = getattr(config, a)
+	return type('MyScrapySpider', (SpiderWrapper, ), class_dict)
 

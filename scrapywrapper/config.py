@@ -3,16 +3,18 @@
 class ScrapyWrapperConfig():
 	name = 'MySpider'
 
-	proxy = {
-		'type': "crawlera",
-		'enabled': True,
-		'apikey': "c8a6eb2f7cab4450806b9ea73187391a"
-	}
-
 	custom_settings = {
 		'DOWNLOAD_DELAY': 0,
-		'CONCURRENT_REQUESTS': 16
+		'CONCURRENT_REQUESTS': 16,
+		#DOWNLOADER_MIDDLEWARES = {
+    	#	'scrapywrapper.webkit_downloader.WebkitDownloader': 1000,
+		#},
+		'DOWNLOADER_MIDDLEWARES': {
+	        'scrapy_crawlera.CrawleraMiddleware': 610
+	    }
 	}
+
+	crawlera_apikey = 'c8a6eb2f7cab4450806b9ea73187391a'
 
 	db = {
 		'type': "mssql",
