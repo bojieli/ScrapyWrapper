@@ -46,7 +46,8 @@ class SpiderWrapper(scrapy.Spider):
 			'cookies': {},
 			'post_rawdata': None,
 			'post_formdata': None,
-			'encoding': 'utf-8'
+			'encoding': 'utf-8',
+			'dont_filter': False # automatic URL deduplication
 		})
 		for k in conf:
 			if k in req_conf:
@@ -72,9 +73,9 @@ class SpiderWrapper(scrapy.Spider):
 			http_params.url = urljoin(referer, http_params.url)
 
 		if http_params.method.lower() == 'post' and http_params.post_formdata:
-			request = scrapy.FormRequest(url=http_params.url, method=http_params.method, headers=http_params.headers, formdata=http_params.post_formdata, cookies=http_params.cookies, encoding=http_params.encoding, callback=self._http_request_callback)
+			request = scrapy.FormRequest(url=http_params.url, method=http_params.method, headers=http_params.headers, formdata=http_params.post_formdata, cookies=http_params.cookies, encoding=http_params.encoding, dont_filter=http_params.dont_filter, callback=self._http_request_callback)
 		else:
-			request = scrapy.Request(url=http_params.url, method=http_params.method, headers=http_params.headers, body=http_params.post_rawdata, cookies=http_params.cookies, encoding=http_params.encoding, callback=self._http_request_callback)
+			request = scrapy.Request(url=http_params.url, method=http_params.method, headers=http_params.headers, body=http_params.post_rawdata, cookies=http_params.cookies, encoding=http_params.encoding, dont_filter=http_params.dont_filter, callback=self._http_request_callback)
 
 		request.meta['$$step'] = curr_step
 		request.meta['$$meta'] = http_params.meta
@@ -333,7 +334,10 @@ class SpiderWrapper(scrapy.Spider):
 				if len(matches) == 0:
 					result = ""
 				else:
-					result = self._strip_tags(res_conf, lxml.etree.tostring(matches[0], encoding=unicode), default_strip=True)
+					try:
+						result = self._strip_tags(res_conf, lxml.etree.tostring(matches[0], encoding=unicode), default_strip=True)
+					except:
+						result = self._strip_tags(res_conf, str(matches[0]), default_strip=True)
 			elif "selector_json" in res_conf:
 				try:
 					obj = json.loads(result)
