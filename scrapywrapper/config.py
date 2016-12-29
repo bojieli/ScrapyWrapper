@@ -1,8 +1,6 @@
 #!/usr/bin/python
 # -*- 'coding':utf-8 -*-
 class ScrapyWrapperConfig():
-	name = 'MySpider'
-
 	custom_settings = {
 		'DOWNLOAD_DELAY': 0,
 		'CONCURRENT_REQUESTS': 16,
@@ -11,7 +9,8 @@ class ScrapyWrapperConfig():
 		#},
 		'DOWNLOADER_MIDDLEWARES': {
 	        'scrapy_crawlera.CrawleraMiddleware': 610
-	    }
+	    },
+		'USER_AGENT': "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/27.0.1453.93 Safari/537.36"
 	}
 
 	crawlera_apikey = 'c8a6eb2f7cab4450806b9ea73187391a'

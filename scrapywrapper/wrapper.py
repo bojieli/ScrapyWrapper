@@ -287,6 +287,13 @@ class SpiderWrapper(scrapy.Spider):
 						next_objs = [ item for sublist in next_objs for item in sublist ]
 					else:
 						next_objs = [ o[l] for o in next_objs if l in o ]
+					newlist = []
+					for o in next_objs:
+						if type(o) is list:
+							newlist.extend(o)
+						else:
+							newlist.append(o)
+					next_objs = newlist
 				results = [ json.dumps(o) for o in next_objs ]
 			else: # plain text
 				results = [ response_text ]
@@ -567,6 +574,7 @@ class SpiderWrapper(scrapy.Spider):
 				parsed = res_conf.data_postprocessor(parsed, meta)
 			if parsed:
 				record[res_conf.name] = parsed
+				meta[res_conf.name] = parsed
 
 		for res_conf in reference_fields:
 			status = self._parse_reference_field(res_conf, record)
