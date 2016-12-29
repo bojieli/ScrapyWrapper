@@ -19,6 +19,7 @@ from config import ScrapyWrapperConfig
 from urlparse import urljoin
 from .helper import ScrapyHelper, AttrDict
 from .webkit_downloader import WebkitDownloader
+import types
 
 utf8_parser = lxml.etree.HTMLParser(encoding='utf-8')
 
@@ -28,17 +29,35 @@ class SpiderWrapper(scrapy.Spider):
 		self._init_db()
 		if callable(self.config.begin_urls):
 			for url in self.config.begin_urls():
-				yield self._build_request(url, "begin")
+				for req in self._build_request(url, "begin"):
+					yield req
 		else:
 			for url in self.config.begin_urls:
-				yield self._build_request(url, "begin")
+				for req in self._build_request(url, "begin"):
+					yield req
 
 	def _gen_http_params(self, url, req_conf, meta=None):
 		if callable(req_conf):
-			return req_conf(url, meta)
+			req = req_conf(url, meta)
+			if type(req) is dict:
+				yield req
+			elif type(req) is list:
+				for item in req:
+					for params in self._gen_http_params(url, item, meta):
+						yield params
+			elif isinstance(req, types.GeneratorType):
+				for genvar in req:
+					for params in self._gen_http_params(url, genvar, meta):
+						yield params
+			else:
+				raise scrapy.exceptions.CloseSpider('req_conf return value is neither dict, nor iterable')
+		elif type(req_conf) is list:
+			for item in req_conf:
+				for params in self._gen_http_params(url, item, meta):
+					yield params
 
 		# default values
-		conf = AttrDict({
+		conf = {
 			'url': url,
 			'meta': meta,
 			'method': 'get',
@@ -48,14 +67,14 @@ class SpiderWrapper(scrapy.Spider):
 			'post_formdata': None,
 			'encoding': 'utf-8',
 			'dont_filter': False # automatic URL deduplication
-		})
+		}
 		for k in conf:
 			if k in req_conf:
 				if callable(req_conf[k]):
 					conf[k] = req_conf[k](url, meta)
 				else:
 					conf[k] = req_conf[k]
-		return conf
+		yield conf
 
 	def _build_request(self, url, curr_step, meta=None, referer=None):
 		if curr_step not in self.config.steps:
@@ -65,27 +84,46 @@ class SpiderWrapper(scrapy.Spider):
 			req_conf = step_conf.req
 		else:
 			req_conf = {}
-		http_params = self._gen_http_params(url, req_conf, meta)
 
-		if http_params.encoding != 'utf-8':
-			http_params.url = http_params.url.decode('utf-8').encode(http_params.encoding)
-		if referer:
-			http_params.url = urljoin(referer, http_params.url)
+		for http_params in self._gen_http_params(url, req_conf, meta):
+			if 'encoding' in http_params and http_params['encoding'] != 'utf-8':
+				http_params['url'] = http_params['url'].decode('utf-8').encode(http_params['encoding'])
+			else:
+				http_params['encoding'] = 'utf-8'
 
-		if http_params.method.lower() == 'post' and http_params.post_formdata:
-			request = scrapy.FormRequest(url=http_params.url, method=http_params.method, headers=http_params.headers, formdata=http_params.post_formdata, cookies=http_params.cookies, encoding=http_params.encoding, dont_filter=http_params.dont_filter, callback=self._http_request_callback)
-		else:
-			request = scrapy.Request(url=http_params.url, method=http_params.method, headers=http_params.headers, body=http_params.post_rawdata, cookies=http_params.cookies, encoding=http_params.encoding, dont_filter=http_params.dont_filter, callback=self._http_request_callback)
+			if referer:
+				http_params['url'] = urljoin(referer, http_params['url'])
 
-		request.meta['$$step'] = curr_step
-		request.meta['$$meta'] = http_params.meta
-		request.meta['$$encoding'] = http_params.encoding
-		request.meta['$$referer'] = referer
-		if 'webview' in req_conf and req_conf['webview']:
-			request.meta['$$webview'] = True
-		else:
-			request.meta['$$webview'] = False
-		return request
+			if http_params['method'].lower() == 'post' and "post_formdata" in http_params and http_params['post_formdata']:
+				request = scrapy.FormRequest(
+					url=http_params['url'],
+					method=http_params['method'],
+					headers=http_params['headers'] if 'headers' in http_params else None,
+					formdata=http_params['post_formdata'],
+					cookies=http_params['cookies'] if 'cookies' in http_params else None,
+					encoding=http_params['encoding'] if 'encoding' in http_params else None,
+					dont_filter=http_params['dont_filter'] if 'dont_filter' in http_params else None,
+					callback=self._http_request_callback)
+			else:
+				request = scrapy.FormRequest(
+					url=http_params['url'],
+					method=http_params['method'],
+					headers=http_params['headers'] if 'headers' in http_params else None,
+					body=http_params['post_rawdata'] if 'post_rawdata' in http_params else None,
+					cookies=http_params['cookies'] if 'cookies' in http_params else None,
+					encoding=http_params['encoding'] if 'encoding' in http_params else None,
+					dont_filter=http_params['dont_filter'] if 'dont_filter' in http_params else None,
+					callback=self._http_request_callback)
+
+			request.meta['$$step'] = curr_step
+			request.meta['$$meta'] = http_params['meta']
+			request.meta['$$encoding'] = http_params['encoding']
+			request.meta['$$referer'] = referer
+			if 'webview' in http_params and http_params['webview']:
+				request.meta['$$webview'] = True
+			else:
+				request.meta['$$webview'] = False
+			yield request
 
 	def _to_attr_dict(self, c):
 		if type(c) is dict:
@@ -143,16 +181,16 @@ class SpiderWrapper(scrapy.Spider):
 			del res_conf.selector_contains
 
 		if "selector_table_sibling_contains" in res_conf:
-			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[contains(text(), "' + res_conf.selector_table_sibling + '")]]/following-sibling::td'
-			del res_conf.selector_table_sibling
+			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[contains(text(), "' + res_conf.selector_table_sibling_contains + '")]]/following-sibling::td'
+			del res_conf.selector_table_sibling_contains
 
 		if "selector_table_sibling" in res_conf:
 			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[text()="' + res_conf.selector_table_sibling + '"]]/following-sibling::td'
 			del res_conf.selector_table_sibling
 
 		if "selector_table_next_row_contains" in res_conf:
-			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[contains(text(), "' + res_conf.selector_table_next_row + '")]]/ancestor::tr/following-sibling::tr/td'
-			del res_conf.selector_table_next_row
+			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[contains(text(), "' + res_conf.selector_table_next_row_contains + '")]]/ancestor::tr/following-sibling::tr/td'
+			del res_conf.selector_table_next_row_contains
 
 		if "selector_table_next_row" in res_conf:
 			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[text()="' + res_conf.selector_table_next_row + '"]]/ancestor::tr/following-sibling::tr/td'
@@ -232,7 +270,7 @@ class SpiderWrapper(scrapy.Spider):
 							except:
 								results.append(self._strip_tags(res_conf, str(m), default_strip=False))
 				except:
-					raise scrapy.exception.CloseSpider('invalid selector_xpath ' + str(res_conf.selector_xpath))
+					raise scrapy.exceptions.CloseSpider('invalid selector_xpath ' + str(res_conf.selector_xpath))
 
 			elif "selector_json" in res_conf:
 				obj = json.loads(response_text)
@@ -681,7 +719,8 @@ class SpiderWrapper(scrapy.Spider):
 			elif step_config.type == "file":
 				yield self._parse_file_record(step_config, url, *result)
 			elif step_config.type == "http":
-				yield self._build_request(result[0], result[1], result[2], url)
+				for req in self._build_request(result[0], result[1], result[2], url):
+					yield req
 			elif step_config.type == "intermediate":
 				for req in self._http_request_callback(self._forge_http_response_for_intermediate(step_config, url, result)):
 					yield req
