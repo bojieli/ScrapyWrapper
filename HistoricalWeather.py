@@ -96,23 +96,26 @@ for filename in onlyfiles:
 					continue
 				fields = line.split(' ')
 				fields = [f.strip() for f in fields]
-				station = stations[fields[0]]
-				record = [
-					today,
-					get_region_id(station[2], station[1]),
-					station[1], #region
-					fields[4], #high
-					fields[5], #low
-					fields[9], #wind
-					fields[6], #pressure
-					fields[7], #precipi
-					station[3], #long
-					station[4], #lat
-					station[0], #id
-					station[2], #name
-					fields[3], # avg
-					fields[2]  # day
-				]
+				try:
+					station = stations[fields[0]]
+					record = [
+						today,
+						get_region_id(station[2], station[1]),
+						station[1], #region
+						fields[4], #high
+						fields[5], #low
+						fields[9], #wind
+						fields[6], #pressure
+						fields[7], #precipi
+						station[3], #long
+						station[4], #lat
+						station[0], #id
+						station[2], #name
+						fields[3], # avg
+						fields[2]  # day
+					]
+				except:
+					continue
 				table_data.append(record)
 			print('rows: ' + str(len(table_data)))
 			insertshard(cursor, table_name, table_fields, value_types, table_data)
