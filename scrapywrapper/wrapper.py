@@ -20,6 +20,7 @@ from urlparse import urljoin
 from .helper import ScrapyHelper, AttrDict
 from .webkit_downloader import WebkitDownloader
 import types
+import copy
 
 utf8_parser = lxml.etree.HTMLParser(encoding='utf-8')
 
@@ -159,9 +160,10 @@ class SpiderWrapper(scrapy.Spider):
 		return cols
 
 	def _strip_tags(self, res_conf, text, default_strip=False):
-		to_strip = default_strip
-		if "strip_tags" in res_conf and res_conf.strip_tags:
-			to_strip = True
+		if "strip_tags" in res_conf:
+			to_strip = res_conf.strip_tags
+		else:
+			to_strip = default_strip
 
 		if to_strip:
 			convertor = html2text.HTML2Text()
@@ -521,7 +523,8 @@ class SpiderWrapper(scrapy.Spider):
 	def _parse_int(self, text):
 		text = text.replace(',', '')
 		try:
-			return int(text)
+			m = re.search('[0-9-][0-9]*', text.replace(',', ''))
+			return int(m.group(0))
 		except:
 			return ScrapyHelper().parse_chinese_int(text)
 
@@ -530,11 +533,11 @@ class SpiderWrapper(scrapy.Spider):
 			(url, result, meta) = conf.preprocessor(url, result, meta)
 
 		reference_fields = []
-		record = {}
 		# populate record with meta
-		if type(meta) is dict:
-			for k in meta:
-				record[k] = meta[k]				
+		if type(meta) is not dict:
+			meta = {}
+		else: # copy the dict!
+			meta = copy.copy(meta)
 		meta['$$referer'] = url
 
 		if "fields" not in conf:
@@ -551,7 +554,8 @@ class SpiderWrapper(scrapy.Spider):
 					parsed = self._parse_date(parsed)
 				elif res_conf.data_type == "float":
 					try:
-						parsed = str(float(parsed.replace(',', '')))
+						m = re.search('[0-9.-][0-9.]*', parsed.replace(',', ''))
+						parsed = str(float(m.group(0)))
 					except:
 						parsed = str(self._parse_int(parsed))
 				elif res_conf.data_type == "int":
@@ -566,38 +570,31 @@ class SpiderWrapper(scrapy.Spider):
 				print('Full record: ' + result)
 				return
 			if "data_validator" in res_conf and callable(res_conf.data_validator):
-				if not res_conf.data_validator(parsed):
-					print('Record parse error: field ' + res_conf.name + ' failed data validator (value "' + parsed + '")')
-					print('Full record: ' + result)
+				if not res_conf.data_validator(parsed, meta):
+					#print('Record parse error: field ' + res_conf.name + ' failed data validator (value "' + parsed + '")')
+					#print('Full record: ' + result)
 					return
 			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
 				parsed = res_conf.data_postprocessor(parsed, meta)
 			if parsed:
-				record[res_conf.name] = parsed
 				meta[res_conf.name] = parsed
 
 		for res_conf in reference_fields:
-			status = self._parse_reference_field(res_conf, record)
+			status = self._parse_reference_field(res_conf, meta)
 			if status == False and "required" in res_conf and res_conf.required:
-				print('Record parse error: required reference field ' + res_conf.name + ' not matched (value ' + record[res_conf.reference.field] + ')')
+				print('Record parse error: required reference field ' + res_conf.name + ' not matched (value ' + meta[res_conf.reference.field] + ')')
 				print('Full record: ' + result)
 				return
 
 		if "postprocessor" in conf and callable(conf.postprocessor):
-			record = conf.postprocessor(record)
-
-		# the next thing to do...
-		if meta is None:
-			meta = {}
-		for k in record:
-			meta[k] = record[k]				
+			meta = conf.postprocessor(meta)
 
 		# remove empty fields to insert to db
 		if conf.type == 'db':
 			for res_conf in conf.fields:
-				if res_conf.name in record and record[res_conf.name] is None:
-					del record[res_conf.name]
-			data_guid = self._insert_db_record(conf, url, record)
+				if res_conf.name in meta and meta[res_conf.name] is None:
+					del meta[res_conf.name]
+			data_guid = self._insert_db_record(conf, url, meta)
 			meta['$$info_id'] = data_guid
 			meta['$$info_table'] = conf.table_name
 
@@ -723,15 +720,18 @@ class SpiderWrapper(scrapy.Spider):
 			result = self._parse_db_record(step_config, url, *result)
 			# the returned result has more metadata
 			if step_config.type == "db":
-				pass
+				if result:
+					for req in self._http_request_callback(self._forge_http_response_for_intermediate(step_config, url, result)):
+						yield req
 			elif step_config.type == "file":
 				yield self._parse_file_record(step_config, url, *result)
 			elif step_config.type == "http":
 				for req in self._build_request(result[0], result[1], result[2], url):
 					yield req
 			elif step_config.type == "intermediate":
-				for req in self._http_request_callback(self._forge_http_response_for_intermediate(step_config, url, result)):
-					yield req
+				if result:
+					for req in self._http_request_callback(self._forge_http_response_for_intermediate(step_config, url, result)):
+						yield req
 			else:
 				raise scrapy.exceptions.CloseSpider('undefined step type ' + step.config.type)
 
@@ -748,7 +748,7 @@ class SpiderWrapper(scrapy.Spider):
 			else:
 				results = self._parse_http_response(response, step_conf.res)
 		else:
-			results = [ (response.body_as_unicode(), response.meta['$$step'], response.meta['$$meta']) ]
+			results = []
 
 		for req in self._yield_requests_from_parse_results(response.url, results):
 			if req.meta['$$webview']:
