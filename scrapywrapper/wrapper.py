@@ -251,14 +251,17 @@ class SpiderWrapper(scrapy.Spider):
 					from slimit.visitors import nodevisitor
 					tree = Parser().parse(response_text)
 					results = [ getattr(node, 'value') for node in nodevisitor.visit(tree) if isinstance(node, ast.String) ]
+
 				elif res_conf.parser == 'js-object':
-					m = re.search('var\s+[a-zA-Z0-9_$]+=\s+(.*)')
+					m = re.search('var\s+[a-zA-Z0-9_$]+=\s*(.*)', response_text)
 					if not m:
+						response_text = ""
 						results = []
 					else:
-						results = [ m.group(1) ]
+						response_text = m.group(1).strip(';')
+						results = [ response_text ]
 
-			elif "selector_matrix" in res_conf:
+			if "selector_matrix" in res_conf:
 				doc = lxml.html.fromstring(response_text, parser=utf8_parser)
 				matrix = []
 				for row in doc.xpath('//tr'):
@@ -576,6 +579,12 @@ class SpiderWrapper(scrapy.Spider):
 		m = re.search(u'^([0-9]{4})年$', text)
 		if m:
 			return self._make_date_string(m.group(1), 1, 1)
+		m = re.search(u'^([0-9]{4})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})', text)
+		if m:
+			return m.group(1) + '-' + m.group(2) + '-' + m.group(3) + ' ' + m.group(4) + ':' + m.group(5) + ':' + m.group(6)
+		m = re.search(u'^([0-9]{4})([0-9]{2})([0-9]{2})', text)
+		if m:
+			return self._make_date_string(m.group(1), m.group(2), m.group(3))
 		return None
 
 	def _parse_int(self, text):
