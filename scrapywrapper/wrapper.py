@@ -433,7 +433,13 @@ class SpiderWrapper(scrapy.Spider):
 							next_objs = [ o.values() for o in next_objs ]
 							next_objs = [ item for sublist in next_objs for item in sublist ]
 						else:
-							next_objs = [ o[l] for o in next_objs if l in o ]
+							new_objs = []
+							for o in next_objs:
+								if type(o) is list and len(o) > int(l):
+									new_objs.append(o[int(l)])
+								elif type(o) is dict and l in o:
+									new_objs.append(o[l])
+							next_objs = new_objs
 					for o in next_objs:
 						if type(o) is str or type(o) is unicode:
 							result = o
@@ -618,7 +624,7 @@ class SpiderWrapper(scrapy.Spider):
 						parsed = str(float(m.group(1)))
 					except:
 						parsed = None
-			if type(parsed) is not str and type(parsed) is not unicode:
+			if type(parsed) is not str and type(parsed) is not unicode and parsed is not None:
 				parsed = str(parsed)
 			if "required" in res_conf and res_conf.required:
 				if parsed == None or len(parsed) == 0:
@@ -632,8 +638,7 @@ class SpiderWrapper(scrapy.Spider):
 					return
 			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
 				parsed = res_conf.data_postprocessor(parsed, meta)
-			if parsed:
-				meta[res_conf.name] = parsed
+			meta[res_conf.name] = parsed
 
 		for res_conf in reference_fields:
 			status = self._parse_reference_field(res_conf, meta)
