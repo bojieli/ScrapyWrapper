@@ -75,6 +75,14 @@ class SpiderWrapper(scrapy.Spider):
 					conf[k] = req_conf[k](url, meta)
 				else:
 					conf[k] = req_conf[k]
+		# disable filtering POST requests
+		if conf['method'] == 'post' and 'dont_filter' not in req_conf:
+			conf['dont_filter'] = True
+
+		if 'post_formdata' in conf and conf['post_formdata'] is not None:
+			for k in conf['post_formdata']:
+				if callable(conf['post_formdata'][k]):
+					conf['post_formdata'][k] = conf['post_formdata'][k](url, meta)
 		yield conf
 
 	def _build_request(self, url, curr_step, meta=None, referer=None):
@@ -316,6 +324,11 @@ class SpiderWrapper(scrapy.Spider):
 			print('    while parsing response (response ' + str(len(response_text)) + ' bytes)')
 			traceback.print_tb(e[2])
 
+		if 'required' in res_conf and res_conf['required']:
+			if len(results) == 0:
+				print('Record parse error: no results matching selector ' + str(res_conf))
+				print('Full record: ' + result)
+
 		return results
 
 	def _mangle_text_results(self, text_results, res_conf, meta):
@@ -401,6 +414,12 @@ class SpiderWrapper(scrapy.Spider):
 						if type(o) is str or type(o) is unicode:
 							result = o
 							break
+						elif type(o) is int or type(o) is float:
+							result = str(o)
+							break
+						elif type(o) is bool:
+							result = str(int(o))
+							break
 				except:
 					print('selector_json failed: ' + result)
 					pass
@@ -462,7 +481,7 @@ class SpiderWrapper(scrapy.Spider):
 		elif match == 'prefix':
 			self.cursor.execute('SELECT ' + remote_id_field + ' FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]), tuple([ d + '%' for d in local_data ]))
 		elif match == 'wildcard':
-			self.cursor.execute('SELECT ' + remote_id_field + ' FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]) + ' LIKE %s', tuple([ '%' + d + '%' for d in local_data]))
+			self.cursor.execute('SELECT ' + remote_id_field + ' FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]), tuple([ '%' + d + '%' for d in local_data]))
 		elif match == 'lpm':
 			while local_data[0] != '':
 				self.cursor.execute('SELECT ' + remote_id_field + ' FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]), tuple([ d + '%' for d in local_data ]))
@@ -482,12 +501,21 @@ class SpiderWrapper(scrapy.Spider):
 			record[local_field] = row[remote_id_field]
 			return True
 		else:
-			return False
+			if 'insert_if_not_exist' in res_conf.reference and res_conf.reference['insert_if_not_exist']:
+				row = dict(zip(remote_fields, local_data))
+				gen_uuid = str(uuid.uuid4())
+				row[remote_id_field] = gen_uuid
+				self.insert_row(remote_table, row)
+				record[local_field] = gen_uuid
+				return True
+			else:
+				return False
 
 	def _make_date_string(self, year, month, day):
 		return ("%04d" % int(year)) + '-' + ("%02d" % int(month)) + '-' + ("%02d" % int(day))
 
 	def _parse_date(self, text):
+		text = text.replace(' ', '')
 		m = re.search(u'^([0-9]{4})年([0-9]{1,2})月([0-9]{1,2})日$', text)
 		if m:
 			return self._make_date_string(m.group(1), m.group(2), m.group(3))
@@ -562,13 +590,17 @@ class SpiderWrapper(scrapy.Spider):
 					parsed = str(self._parse_int(parsed))
 				elif res_conf.data_type == "percentage":
 					try:
-						parsed = str(float(parsed.strip('%')))
+						m = re.search('([0-9.-][0-9.]*)%', parsed.replace(',', ''))
+						parsed = str(float(m.group(1)))
 					except:
 						parsed = None
-			if (parsed == None or len(parsed) == 0) and "required" in res_conf and res_conf.required:
-				print('Record parse error: required field ' + res_conf.name + ' does not exist')
-				print('Full record: ' + result)
-				return
+			if type(parsed) is not str and type(parsed) is not unicode:
+				parsed = str(parsed)
+			if "required" in res_conf and res_conf.required:
+				if parsed == None or len(parsed) == 0:
+					print('Record parse error: required field ' + res_conf.name + ' does not exist')
+					print('Full record: ' + result)
+					return
 			if "data_validator" in res_conf and callable(res_conf.data_validator):
 				if not res_conf.data_validator(parsed, meta):
 					#print('Record parse error: field ' + res_conf.name + ' failed data validator (value "' + parsed + '")')
@@ -582,7 +614,7 @@ class SpiderWrapper(scrapy.Spider):
 		for res_conf in reference_fields:
 			status = self._parse_reference_field(res_conf, meta)
 			if status == False and "required" in res_conf and res_conf.required:
-				print('Record parse error: required reference field ' + res_conf.name + ' not matched (value ' + meta[res_conf.reference.field] + ')')
+				print('Record parse error: required reference field ' + res_conf.name + ' not matched (value "' + meta[res_conf.reference.field] + '")')
 				print('Full record: ' + result)
 				return
 
@@ -707,7 +739,12 @@ class SpiderWrapper(scrapy.Spider):
 		return response
 
 	def _yield_requests_from_parse_results(self, url, results):
+		count = 0
 		for result in results:
+			# add counter to metadata
+			result[2]['$$record_count'] = count
+			count += 1
+
 			if len(result) < 2 or type(result[1]) is None or result[1] == 'end':
 				continue
 			if result[1] not in self.config.steps:
