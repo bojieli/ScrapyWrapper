@@ -334,7 +334,14 @@ class SpiderWrapper(scrapy.Spider):
 				results = regex_results
 
 			if "selector" in res_conf and callable(res_conf.selector):
-				results = [ res_conf.selector(r, meta) for r in results ]
+				new_results = []
+				for r in results:
+					res = res_conf.selector(r, meta)
+					if type(res) is list:
+						new_results.extend(res)
+					else:
+						new_results.append(res)
+				results = new_results
 		except:
 			e = sys.exc_info()
 			print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
@@ -344,7 +351,7 @@ class SpiderWrapper(scrapy.Spider):
 		if 'required' in res_conf and res_conf['required']:
 			if len(results) == 0:
 				print('Record parse error: no results matching selector ' + str(res_conf))
-				print('Full record: ' + result)
+				print('Full record: ' + response_text)
 
 		return results
 
@@ -592,7 +599,6 @@ class SpiderWrapper(scrapy.Spider):
 				reference_fields.append(res_conf)
 				continue
 			parsed = self._parse_record_field(res_conf, result, meta)
-			print(parsed)
 			if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
 				parsed = res_conf.data_preprocessor(parsed, meta)
 			if "data_type" in res_conf:
