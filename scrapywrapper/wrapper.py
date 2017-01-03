@@ -75,6 +75,23 @@ class SpiderWrapper(scrapy.Spider):
 					conf[k] = req_conf[k](url, meta)
 				else:
 					conf[k] = req_conf[k]
+
+		if type(conf['post_formdata']) is str:
+			l = conf['post_formdata'].split('&')
+			forms = {}
+			for i in l:
+				kv = i.split('=')
+				forms[kv[0]] = kv[1]
+			conf['post_formdata'] = forms
+
+		if type(conf['cookies']) is str:
+			l = conf['cookies'].split(';')
+			cookies = {}
+			for i in l:
+				kv = i.split('=')
+				cookies[kv[0]] = kv[1].strip()
+			conf['cookies'] = cookies
+
 		# disable filtering POST requests
 		if conf['method'] == 'post' and 'dont_filter' not in req_conf:
 			conf['dont_filter'] = True
@@ -575,6 +592,7 @@ class SpiderWrapper(scrapy.Spider):
 				reference_fields.append(res_conf)
 				continue
 			parsed = self._parse_record_field(res_conf, result, meta)
+			print(parsed)
 			if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
 				parsed = res_conf.data_preprocessor(parsed, meta)
 			if "data_type" in res_conf:
