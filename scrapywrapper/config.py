@@ -45,8 +45,15 @@ class ScrapyWrapperConfig():
 		'basedir': ""
 	}
 
+	file_db_table = {
+		'table_name': 'PictrueInfo',
+		'info_id_field': 'InfoID',
+		'path_field': 'PicUrl',
+		'info_table_field': 'InfoTable'
+	}
+
 	url_table = {
-		'name': "OriginalWebUrl",
+		'table_name': "OriginalWebUrl",
 		'id_field': "ResID",
 		'url_field': "WebURL",
 		'time_field': "UpdateTime"

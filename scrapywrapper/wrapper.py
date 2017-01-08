@@ -21,6 +21,8 @@ from .helper import ScrapyHelper, AttrDict
 import types
 import copy
 from scrapy_webdriver.http import WebdriverRequest
+import os
+import urllib2
 
 utf8_parser = lxml.etree.HTMLParser(encoding='utf-8')
 
@@ -175,6 +177,7 @@ class SpiderWrapper(scrapy.Spider):
 		c = self.config
 		c.db = AttrDict(c.db)
 		c.file_storage = AttrDict(c.file_storage)
+		c.file_db_table = AttrDict(c.file_db_table)
 		c.url_table = AttrDict(c.url_table)
 		c.steps = self._to_attr_dict(c.steps)
 
@@ -195,12 +198,7 @@ class SpiderWrapper(scrapy.Spider):
 			cols[row['COLUMN_NAME']] = row['TYPE_NAME']
 		return cols
 
-	def _strip_tags(self, res_conf, text, default_strip=False):
-		if "strip_tags" in res_conf:
-			to_strip = res_conf.strip_tags
-		else:
-			to_strip = default_strip
-
+	def _strip_tags(self, to_strip, text):
 		if to_strip:
 			convertor = html2text.HTML2Text()
 			convertor.ignore_links = True
@@ -291,25 +289,31 @@ class SpiderWrapper(scrapy.Spider):
 				return [ ' '.join(col) for col in matrix ]
 
 			elif "selector_xpath" in res_conf:
-				if "keep_entities" in res_conf and res.keep_entities:
-					pass
-				else:
-					response_text = HTMLParser().unescape(response_text)
+				#if "keep_entities" in res_conf and res.keep_entities:
+				#	pass
+				#else:
+				#	response_text = HTMLParser().unescape(response_text)
 				doc = lxml.html.fromstring(response_text, parser=utf8_parser)
 				try:
+					if "strip_tags" in res_conf:
+						to_strip = res_conf.strip_tags
+					else:
+						to_strip = False
 					if type(res_conf.selector_xpath) is list:
 						for p in res_conf.selector_xpath:
 							for m in doc.xpath(p):
 								try:
-									results.append(self._strip_tags(res_conf, lxml.etree.tostring(m, encoding=unicode), default_strip=False))
+									serialize_method = 'text' if to_strip else 'html'
+									results.append(lxml.etree.tostring(m, method=serialize_method, encoding=unicode))
 								except:
-									results.append(self._strip_tags(res_conf, str(m), default_strip=False))
+									results.append(self._strip_tags(to_strip, unicode(m)))
 					else:
 						for m in doc.xpath(res_conf.selector_xpath):
 							try:
-								results.append(self._strip_tags(res_conf, lxml.etree.tostring(m, encoding=unicode), default_strip=False))
+								serialize_method = 'text' if to_strip else 'html'
+								results.append(lxml.etree.tostring(m, method=serialize_method, encoding=unicode))
 							except:
-								results.append(self._strip_tags(res_conf, str(m), default_strip=False))
+								results.append(self._strip_tags(to_strip, unicode(m)))
 				except:
 					raise scrapy.exceptions.CloseSpider('invalid selector_xpath ' + str(res_conf.selector_xpath))
 
@@ -432,10 +436,16 @@ class SpiderWrapper(scrapy.Spider):
 				if len(matches) == 0:
 					result = ""
 				else:
+					if "strip_tags" in res_conf:
+						to_strip = res_conf.strip_tags
+					else:
+						to_strip = True
+					serialize_method = 'text' if to_strip else 'html'
 					try:
-						result = self._strip_tags(res_conf, lxml.etree.tostring(matches[0], encoding=unicode), default_strip=True)
+						result = lxml.etree.tostring(matches[0], method=serialize_method, encoding=unicode)
 					except:
-						result = self._strip_tags(res_conf, str(matches[0]), default_strip=True)
+						result = self._strip_tags(to_strip, unicode(matches[0]))
+
 			elif "selector_json" in res_conf:
 				try:
 					obj = json.loads(result)
@@ -606,6 +616,31 @@ class SpiderWrapper(scrapy.Spider):
 		except:
 			return ScrapyHelper().parse_chinese_int(text)
 
+	def _download_images_from_html(self, response_text, meta):
+		image_urls = []
+
+		doc = lxml.html.fromstring(response_text, parser=utf8_parser)
+		for m in doc.xpath('//img/@src'):
+			response = AttrDict()
+			response.url = urljoin(meta['$$url'], str(m))
+			response.meta = meta
+			try:
+				response.body_stream = urllib2.urlopen(response.url)
+			except:
+				print('Failed to download image "' + response.url + '" in article "' + meta['$$url'] + '"')
+				continue
+			response.headers = {}
+			record = self._save_file_record(response)
+			if record:
+				filepath, _ = record
+				image_urls.append((filepath, response.url))
+				response_text = response_text.replace(str(m), filepath)
+
+		if '$$image_urls' not in meta:
+			meta['$$image_urls'] = []
+		meta['$$image_urls'].extend(image_urls)
+		return response_text
+
 	def _parse_db_record(self, conf, url, result, curr_step, meta=None):
 		if "preprocessor" in conf and callable(conf.preprocessor):
 			(url, result, meta) = conf.preprocessor(url, result, meta)
@@ -656,6 +691,8 @@ class SpiderWrapper(scrapy.Spider):
 					#print('Record parse error: field ' + res_conf.name + ' failed data validator (value "' + parsed + '")')
 					#print('Full record: ' + result)
 					return
+			if "download_images" in res_conf and res_conf.download_images:
+				parsed = self._download_images_from_html(parsed, meta)
 			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
 				parsed = res_conf.data_postprocessor(parsed, meta)
 			meta[res_conf.name] = parsed
@@ -679,6 +716,9 @@ class SpiderWrapper(scrapy.Spider):
 			meta['$$info_id'] = data_guid
 			meta['$$info_table'] = conf.table_name
 
+		if '$$image_urls' in meta:
+			self._save_image_urls_to_db(meta['$$image_urls'], meta)
+
 		return (result, curr_step, meta)
 
 	def _ftp_mkdir_recursive(self, path):
@@ -693,23 +733,30 @@ class SpiderWrapper(scrapy.Spider):
 		# restore pwd
 		self.ftp_conn.cwd(pwd)
 
-	def _save_file_to_ftp(self, filename, conf, data):
-		if "ftp_conn" not in self:
+	def _save_file_to_ftp(self, filename, conf, data_stream):
+		if not hasattr(self, 'ftp_conn'):
 			self.ftp_conn = FTP(self.config.file_storage.server,
 				self.config.file_storage.user,
 				self.config.file_storage.password)
 			if self.config.file_storage.basedir:
 				self.ftp_conn.mkd(self.config.file_storage.basedir)
 				self.ftp_conn.cwd(self.config.file_storage.basedir)
+			self.ftp_conn.set_pasv(True)
 
-		f = tempfile.NamedTemporaryFile()
-		f.write(data)
 		try:
-			self.ftp_conn.storbinary('STOR ' + filename, f.name)
+			self.ftp_conn.storbinary('STOR ' + filename, data_stream)
 		except: # in case the diretory does not exist
-			self._ftp_mkdir_recursive(filename)
-			self.ftp_conn.storbinary('STOR ' + filename, f.name)
-		f.close()
+			try:
+				self._ftp_mkdir_recursive(filename)
+				self.ftp_conn.storbinary('STOR ' + filename, data_stream)
+			except:
+				e = sys.exc_info()
+				print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
+				print('    while saving file to FTP, filename: ' + filename)
+				traceback.print_tb(e[2])
+				return False
+
+		return True
 
 	def _local_mkdir_recursive(self, path):
 		sub_path = os.path.dirname(path)
@@ -724,54 +771,86 @@ class SpiderWrapper(scrapy.Spider):
 		f.write(data)
 		f.close()
 
-	def _parse_file_record_callback(self, response):
+	def _save_file_record(self, response):
 		conf = self.config.file_storage
 		file_uuid = str(uuid.uuid4())
-		file_dir = str(datetime.date.today().year) + '/' + str(datetime.date.today().month())
+		file_dir = str(datetime.date.today().year) + '/' + str(datetime.date.today().month)
 		file_ext = None
-		if "Content-Type" in self.headers:
-			mimetype = str(self.headers["Content-Type"])
+		if "Content-Type" in response.headers:
+			mimetype = str(response.headers["Content-Type"])
 			if mimetype in mimetypes.MimeTypes().types_map_inv:
 				file_ext = mimetypes.MimeTypes().types_map_inv[mimetype][0]
+
+		if not file_ext:
+			_, file_ext = os.path.splitext(response.url)
+		file_ext = file_ext.strip('.')
+
 		if file_ext:
 			filepath = file_dir + '/' + file_uuid + '.' + file_ext
 		else:
 			filepath = file_dir + '/' + file_uuid
 
 		if conf.type == "ftp":
-			self._save_file_to_ftp(conf, filepath, response.body)
+			if hasattr(response, 'body_stream'):
+				if not self._save_file_to_ftp(filepath, conf, response.body_stream):
+					return None
+			else:
+				import StringIO
+				if not self._save_file_to_ftp(filepath, conf, StringIO.StringIO(response.body)):
+					return None
+
 		elif conf.type == "local":
+			if hasattr(response, 'body_stream'):
+				response.body = response.body_stream.read()
 			self._save_file_to_local(conf, filepath, response.body)
 		else:
 			raise scrapy.exceptions.CloseSpider('undefined record type ' + conf.type)
 
-		db_conf = response.meta['$$conf']
-		record = {}
-		record[db_conf.path_field] = filepath
-		record[db_conf.info_id_field] = response.meta['$$info_id']
-		record[db_conf.info_table_field] = response.meta['$$info_table']
-		self._insert_db_record(db_conf, response.url, record)
+		print("[" + self.name + "] Saved file " + filepath + " (URL: " + response.url + " )")
+		return (filepath, response.url)
 
-		if "res" in db_conf:
-			meta = record
+	def _parse_file_record_callback(self, response):
+		record = self._save_file_record(response)
+		if record is None:
+			return
+		filepath, _ = record
+
+		meta = response.meta['$$meta']
+		if '$$conf' in meta:
+			self._save_image_urls_to_db([(filepath, response.url)], meta)
+
+		curr_step = meta['$$step']
+		if "res" in self.config.steps[curr_step]:
+			res_conf = self.config.steps[curr_step].res
+
 			meta['$$referer'] = response.url
+			meta['$$filepath'] = filepath
 
-			res_conf = db_conf.res
-			if type(res_conf) is list:
-				results = [ self._parse_and_mangle_text_response(response.body_as_unicode(), one_conf, meta) for one_conf in res_conf ]
-				results = [ item for sublist in results for item in sublist ]
-			else:
-				results = self._parse_and_mangle_text_response(response.body_as_unicode(), res_conf, meta)
-			for req in self._yield_requests_from_parse_results(results):
+			if type(res_conf) is not list:
+				res_conf = [ res_conf ]
+			results = [ (response.body, one_conf.next_step, meta) for one_conf in res_conf ]
+			for req in self._yield_requests_from_parse_results(response.url, results):
 				yield req
 
+	def _save_image_urls_to_db(self, image_urls, response_meta):
+		db_conf = response_meta['dbconf'] if 'dbconf' in response_meta else self.config.file_db_table
+		for image_path_url_tuple in image_urls:
+			image_path, image_url = image_path_url_tuple
+			record = {}
+			record[db_conf.path_field] = image_path
+			record[db_conf.info_id_field] = response_meta['$$info_id']
+			record[db_conf.info_table_field] = response_meta['$$info_table']
+			self._insert_db_record(db_conf, image_url, record)
 
 	def _parse_file_record(self, conf, referer, url, curr_step, meta):
+		url = urljoin(referer, url)
 		req = scrapy.Request(url=url, callback=self._parse_file_record_callback)
-		req.meta['$$referer'] = referer
-		req.meta['$$conf'] = conf
-		req.meta['$$info_id'] = meta.info_id
-		req.meta['$$info_table'] = meta.info_table
+		meta['$$referer'] = referer
+		meta['$$conf'] = conf
+		meta['$$step'] = curr_step
+		meta['$$info_id'] = meta['$$info_id'] if '$$info_id' in meta else None
+		meta['$$info_table'] = meta['$$info_table'] if '$$info_table' in meta else None
+		req.meta['$$meta'] = meta
 		return req
 
 	def _forge_http_response_for_intermediate(self, conf, url, result):
@@ -858,7 +937,7 @@ class SpiderWrapper(scrapy.Spider):
 		url_row[self.config.url_table.id_field] = data_guid
 		url_row[self.config.url_table.url_field] = url
 		url_row[self.config.url_table.time_field] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-		self.insert_row(self.config.url_table.name, url_row)
+		self.insert_row(self.config.url_table.table_name, url_row)
 		print(url_row[self.config.url_table.time_field] + " [" + self.name + "] Inserted one db record to table " + conf.table_name + " (URL: " + url + " )")
 		return data_guid
 
