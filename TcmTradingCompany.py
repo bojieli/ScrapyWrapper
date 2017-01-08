@@ -7,12 +7,14 @@ class ScrapyConfig(ScrapyWrapperConfig):
 	begin_urls = ["https://s.1688.com/"]
 	steps = {
 		"begin": {
+			'req': {'webview': True},
 			'res': {
 				'selector': lambda _,__: "https://s.1688.com/company/company_search.htm?keywords=%D6%D0%D2%A9%B2%C4&button_click=top&n=y",
 				'next_step': 'list'
 			}
 		},
 		"list": {
+			'req': {'webview': True},
 			'res': [{
 				'selector_xpath': '//a/@href',
 				'selector_regex': '^(https://([a-zA-Z0-9_-]*).1688.com)$',
@@ -25,12 +27,14 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}]
 		},
 		"content": {
+			'req': {'webview': True},
 			'res': {
 				'selector_href_text_contains': u'进入黄页',
 				'next_step': 'basic_info'
 			}
 		},
 		"basic_info": {
+			'req': {'webview': True},
 			'res': {
 				'selector': lambda _,meta: meta['$$url'] + '&tab=companyWeb_BusinessInfo',
 				'next_step': 'tab2'
@@ -117,6 +121,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			]
 		},
 		'tab2': {
+			'req': {'webview': True},
 			"res": {
 				'selector': lambda _,meta: meta['$$url'].replace('&tab=companyWeb_BusinessInfo', '&tab=companyWeb_contact'),
 				'next_step': 'tab3'

@@ -18,9 +18,9 @@ from HTMLParser import HTMLParser
 from config import ScrapyWrapperConfig
 from urlparse import urljoin
 from .helper import ScrapyHelper, AttrDict
-from .webkit_downloader import WebkitDownloader
 import types
 import copy
+from scrapy_webdriver.http import WebdriverRequest
 
 utf8_parser = lxml.etree.HTMLParser(encoding='utf-8')
 
@@ -120,7 +120,17 @@ class SpiderWrapper(scrapy.Spider):
 			if referer:
 				http_params['url'] = urljoin(referer, http_params['url'])
 
-			if http_params['method'].lower() == 'post' and "post_formdata" in http_params and http_params['post_formdata']:
+			if 'webview' in http_params and http_params['webview']:
+				request = WebdriverRequest(
+					url=http_params['url'],
+					method=http_params['method'],
+					headers=http_params['headers'] if 'headers' in http_params else None,
+					formdata=http_params['post_formdata'],
+					cookies=http_params['cookies'] if 'cookies' in http_params else None,
+					encoding=http_params['encoding'] if 'encoding' in http_params else None,
+					dont_filter=http_params['dont_filter'] if 'dont_filter' in http_params else None,
+					callback=self._http_request_callback)
+			elif http_params['method'].lower() == 'post' and "post_formdata" in http_params and http_params['post_formdata']:
 				request = scrapy.FormRequest(
 					url=http_params['url'],
 					method=http_params['method'],
@@ -826,12 +836,7 @@ class SpiderWrapper(scrapy.Spider):
 			results = []
 
 		for req in self._yield_requests_from_parse_results(response.url, results):
-			if req.meta['$$webview']:
-				response = WebkitDownloader().process_request(req, None)
-				for req in _http_request_callback(response):
-					yield req
-			else:
-				yield req
+			yield req
 
 
 	def _insert_db_record(self, conf, url, row):

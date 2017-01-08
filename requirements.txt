@@ -5,6 +5,5 @@ html2text
 lxml
 cssselect
 slimit
-pygtk
-webkit
-jswebkit
+selenium
+https://github.com/sosign/scrapy-webdriver/archive/master.zip

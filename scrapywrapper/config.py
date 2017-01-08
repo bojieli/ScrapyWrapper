@@ -10,6 +10,20 @@ class ScrapyWrapperConfig():
 		'DOWNLOADER_MIDDLEWARES': {
 	        'scrapy_crawlera.CrawleraMiddleware': 610
 	    },
+		'DOWNLOAD_HANDLERS': {
+		    'http': 'scrapy_webdriver.download.WebdriverDownloadHandler',
+		    'https': 'scrapy_webdriver.download.WebdriverDownloadHandler',
+		},
+		'SPIDER_MIDDLEWARES': {
+		    'scrapy_webdriver.middlewares.WebdriverSpiderMiddleware': 543,
+		},
+		'WEBDRIVER_BROWSER': 'PhantomJS', # Or any other from selenium.webdriver
+		                                 # or 'your_package.CustomWebdriverClass'
+		                                 # or an actual class instead of a string.
+		# Optional passing of parameters to the webdriver
+		'WEBDRIVER_OPTIONS': {
+		    'service_args': ['--debug=true', '--load-images=false', '--webdriver-loglevel=debug']
+		},
 		'USER_AGENT': "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/27.0.1453.93 Safari/537.36"
 	}
 
