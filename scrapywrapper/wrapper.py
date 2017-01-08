@@ -117,7 +117,7 @@ class SpiderWrapper(scrapy.Spider):
 
 		for http_params in self._gen_http_params(url, req_conf, meta):
 			if 'encoding' in http_params and http_params['encoding'] != 'utf-8':
-				http_params['url'] = http_params['url'].decode('utf-8').encode(http_params['encoding'])
+				http_params['url'] = http_params['url'].encode(http_params['encoding'])
 			else:
 				http_params['encoding'] = 'utf-8'
 
@@ -222,7 +222,7 @@ class SpiderWrapper(scrapy.Spider):
 			del res_conf.selector_table_sibling_contains
 
 		if "selector_table_sibling" in res_conf:
-			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[text()="' + res_conf.selector_table_sibling + '"]]/following-sibling::td'
+			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[text()[normalize-space()="' + res_conf.selector_table_sibling + '"]]]/following-sibling::td'
 			del res_conf.selector_table_sibling
 
 		if "selector_table_next_row_contains" in res_conf:
@@ -230,11 +230,11 @@ class SpiderWrapper(scrapy.Spider):
 			del res_conf.selector_table_next_row_contains
 
 		if "selector_table_next_row" in res_conf:
-			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[text()="' + res_conf.selector_table_next_row + '"]]/ancestor::tr/following-sibling::tr/td'
+			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[text()[normalize-space()="' + res_conf.selector_table_next_row + '"]]]/ancestor::tr/following-sibling::tr/td'
 			del res_conf.selector_table_next_row
 
 		if "selector_href_text" in res_conf:
-			res_conf.selector_xpath = '//a[text()="' + res_conf.selector_href_text + '"]/@href'
+			res_conf.selector_xpath = '//a[text()[normalize-space()="' + res_conf.selector_href_text + '"]]/@href'
 			del res_conf.selector_href_text
 
 		if "selector_href_contains" in res_conf:
@@ -370,7 +370,7 @@ class SpiderWrapper(scrapy.Spider):
 		if 'required' in res_conf and res_conf['required']:
 			if len(results) == 0:
 				print('Record parse error: no results matching selector ' + str(res_conf))
-				print('Full record: ' + response_text)
+				print('Full record: ' + response_text.encode('utf-8'))
 
 		return results
 
@@ -497,7 +497,7 @@ class SpiderWrapper(scrapy.Spider):
 			print('    while parsing response (' + str(len(result)) + ' bytes)')
 			traceback.print_tb(e[2])
 
-		return result
+		return result.strip()
 
 	def _parse_reference_field(self, res_conf, record):
 		local_field = res_conf.name
@@ -694,7 +694,7 @@ class SpiderWrapper(scrapy.Spider):
 			if "required" in res_conf and res_conf.required:
 				if parsed == None or len(parsed) == 0:
 					print('Record parse error: required field ' + res_conf.name + ' does not exist')
-					print('Full record: ' + result)
+					print('Full record: ' + result.encode('utf-8'))
 					return
 			if "data_validator" in res_conf and callable(res_conf.data_validator):
 				if not res_conf.data_validator(parsed, meta):
