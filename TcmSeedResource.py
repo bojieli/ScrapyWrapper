@@ -18,7 +18,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		},
 		"content": {
 			'req': {
-				'encoding': 'gb2312'
+				'encoding': 'gb2312',
+				'dont_filter': True
 			},
 			'res': [{
 				'selector_xpath': '/html/body/table/tr[2]/td/font/table',
@@ -35,6 +36,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'table_name': "TcmSeedResource",
 			'fields': [
 { 'name': "TcmSeedName", 'selector_table_sibling': u"种质名称", 'required': True },
+{ 'name': "TcmID", 'reference': {'field': 'TcmSeedName', 'table': 'TB_Resources_TraditionalChineseMedicinalMaterials', 'remote_field': 'MedicineName', 'remote_id_field': 'ResID', 'insert_if_not_exist': True } },
 { 'name': "TcmSeedEnglishName", 'selector_table_sibling': u"种质外文名" },
 { 'name': "PlatformResNumber", 'selector_table_sibling': u"平台资源号" },
 { 'name': "ResNumber", 'selector_table_sibling': u"资源编号" },
@@ -149,22 +151,17 @@ class ScrapyConfig(ScrapyWrapperConfig):
 { 'name': "DryingRate", 'selector_table_sibling': u"折干率" },
 { 'name': "BerberineContent", 'selector_table_sibling': u"小檗碱含量" },
 { 'name': "FingerprintSpectrum", 'selector_table_sibling': u"指纹图谱" },
-{ 'name': "ChemicalFingerprintSpectrum", 'selector_table_sibling': u"化学指纹图谱" }
+{ 'name': "ChemicalFingerprintSpectrum", 'selector_table_sibling': u"化学指纹图谱" },
 			],
 			'res': {
-				'selector_xpath': '//tr[8]/td[8]/a',
-				'selector_regex': '([A-Za-z0-9-].jpg)',
-				'data_postprocessor': lambda filename: 'http://124.254.6.83:8088/photo/' + filename,
+				'selector_table_sibling': u'图像',
+				'selector_regex': '([A-Za-z0-9-]+.jpg)',
+				'data_postprocessor': lambda filename, _: 'http://124.254.6.83:8088/photo/' + filename,
 				'next_step': 'image'
 			}
 		},
 		"image": {
 			'type': "file",
-			'table_name': "PictureInfo",
-			'guid_field': "ID",
-			'path_field': "PicUrl",
-			'info_id_field': "InfoID",
-			'info_table_field': "InfoTable"
 		}
 	}
 
