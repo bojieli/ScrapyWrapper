@@ -37,6 +37,10 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_xpath': '//a/@href',
 				'selector_regex': '(\./.*\.pdf)',
 				'next_step': 'pdf'
+			}, {
+				'selector_xpath': '//a/@href',
+				'selector_regex': '(\./.*\.doc)',
+				'next_step': 'pdf'
 			}]
 		},
 		"content": {
