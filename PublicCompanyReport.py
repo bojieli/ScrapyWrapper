@@ -8,7 +8,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 	steps = {
 		"begin": {
 			'res': {
-			    'parser': 'js-string',
+			    'parser': 'js-object',
+				'selector_json': 'rank',
 				'selector': lambda s, meta: s.split(',')[1],
 				'next_step': 'list'
 			}
@@ -38,7 +39,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': 'ReportDate',
 				'selector_xpath': '//td[3]',
-				'data_type': 'Date'
+				'data_type': 'Date',
+				'required': True
 			}]
 		},
 		"content": {
@@ -60,14 +62,21 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'required': True
 			}, {
 				'name': 'ReportNumber',
-				'selector_xpath': 'div.detail-body',
+				'selector_css': 'div.detail-body',
 				'selector_regex': u'公告编号：([0-9-]*)'
 			}, {
 				'name': 'Headline',
-				'selector_css': 'div.detail-header h1'
+				'selector_xpath': '//div[@class="detail-header"]//h1/text()',
+				'required': True
 			}, {
 				'name': 'DetailContent',
-				'selector_xpath': 'div.detail-body'
+				'selector_css': 'div.detail-body',
+				'strip_tags': False,
+				'download_images': True,
+				'required': True
+			}, {
+				'name': 'PdfUrl',
+				'selector_regex': '(http://pdf.dfcfw.com/.*\.pdf)'
 			}]
 		}
 	}
