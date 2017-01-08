@@ -67,7 +67,8 @@ class SpiderWrapper(scrapy.Spider):
 			'post_rawdata': None,
 			'post_formdata': None,
 			'encoding': 'utf-8',
-			'dont_filter': False # automatic URL deduplication
+			'dont_filter': False, # automatic URL deduplication
+			'webview': False
 		}
 		for k in conf:
 			if k in req_conf:
@@ -125,7 +126,7 @@ class SpiderWrapper(scrapy.Spider):
 					url=http_params['url'],
 					method=http_params['method'],
 					headers=http_params['headers'] if 'headers' in http_params else None,
-					formdata=http_params['post_formdata'],
+					#formdata=http_params['post_formdata'],
 					cookies=http_params['cookies'] if 'cookies' in http_params else None,
 					encoding=http_params['encoding'] if 'encoding' in http_params else None,
 					dont_filter=http_params['dont_filter'] if 'dont_filter' in http_params else None,
