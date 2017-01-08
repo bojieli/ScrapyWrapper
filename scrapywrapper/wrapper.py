@@ -5,6 +5,7 @@ import pymssql
 import uuid
 import re
 import json
+import demjson
 import sys
 from ftplib import FTP
 import tempfile
@@ -262,7 +263,7 @@ class SpiderWrapper(scrapy.Spider):
 					results = [ getattr(node, 'value') for node in nodevisitor.visit(tree) if isinstance(node, ast.String) ]
 
 				elif res_conf.parser == 'js-object':
-					m = re.search('var\s+[a-zA-Z0-9_$]+=\s*(.*)', response_text)
+					m = re.search('var\s+[a-zA-Z0-9_$]+\s*=\s*(.*)', response_text)
 					if not m:
 						response_text = ""
 						results = []
@@ -318,7 +319,7 @@ class SpiderWrapper(scrapy.Spider):
 					raise scrapy.exceptions.CloseSpider('invalid selector_xpath ' + str(res_conf.selector_xpath))
 
 			elif "selector_json" in res_conf:
-				obj = json.loads(response_text)
+				obj = demjson.decode(response_text)
 				levels = res_conf.selector_json.split('.')
 				if type(obj) is list:
 					next_objs = obj
@@ -419,7 +420,7 @@ class SpiderWrapper(scrapy.Spider):
 				elif res_conf.parser == 'js-object':
 					m = re.search('var\s+[a-zA-Z0-9_$]+=\s+(.*)')
 					if not m:
-						result = None
+						result = ''
 					else:
 						result = m.group(1)
 					
@@ -434,7 +435,7 @@ class SpiderWrapper(scrapy.Spider):
 					for m in doc.xpath(res_conf.selector_xpath):
 						matches.append(m)
 				if len(matches) == 0:
-					result = ""
+					result = ''
 				else:
 					if "strip_tags" in res_conf:
 						to_strip = res_conf.strip_tags
@@ -448,7 +449,7 @@ class SpiderWrapper(scrapy.Spider):
 
 			elif "selector_json" in res_conf:
 				try:
-					obj = json.loads(result)
+					obj = demjson.decode(result)
 					result = '' # default empty
 					levels = res_conf.selector_json.split('.')
 					next_objs = [ obj ]
@@ -485,6 +486,8 @@ class SpiderWrapper(scrapy.Spider):
 				m = re.search(res_conf.selector_regex, result)
 				if m:
 					result = m.group(1)
+				else:
+					result = ''
 
 			if "selector" in res_conf and callable(res_conf.selector):
 				result = res_conf.selector(result, meta)
@@ -617,9 +620,16 @@ class SpiderWrapper(scrapy.Spider):
 			return ScrapyHelper().parse_chinese_int(text)
 
 	def _download_images_from_html(self, response_text, meta):
+		if not response_text:
+			return response_text
+
 		image_urls = []
 
-		doc = lxml.html.fromstring(response_text, parser=utf8_parser)
+		try:
+			doc = lxml.html.fromstring(response_text, parser=utf8_parser)
+		except:
+			return response_text
+
 		for m in doc.xpath('//img/@src'):
 			response = AttrDict()
 			response.url = urljoin(meta['$$url'], str(m))
