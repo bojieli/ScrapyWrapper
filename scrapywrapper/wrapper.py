@@ -544,7 +544,7 @@ class SpiderWrapper(scrapy.Spider):
 		elif match == 'wildcard':
 			self.cursor.execute('SELECT ' + remote_id_field + ' FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]), tuple([ '%' + d + '%' for d in local_data]))
 		elif match == 'lpm':
-			while local_data[0] != '':
+			while local_data[0] and len(local_data[0]) != 0:
 				self.cursor.execute('SELECT ' + remote_id_field + ' FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]), tuple([ d + '%' for d in local_data ]))
 				row = self.cursor.fetchone()
 				if row:
@@ -576,6 +576,8 @@ class SpiderWrapper(scrapy.Spider):
 		return ("%04d" % int(year)) + '-' + ("%02d" % int(month)) + '-' + ("%02d" % int(day))
 
 	def _parse_date(self, text):
+		if not text:
+			return None
 		text = text.replace(' ', '')
 		m = re.search(u'^([0-9]{4})年([0-9]{1,2})月([0-9]{1,2})日$', text)
 		if m:
@@ -919,7 +921,6 @@ class SpiderWrapper(scrapy.Spider):
 
 	def _http_request_callback(self, response):
 		step_conf = self.config.steps[response.meta['$$step']]
-		print(response.body)
 		results = []
 		if "res" in step_conf:
 			if callable(step_conf.res):
