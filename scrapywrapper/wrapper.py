@@ -669,9 +669,9 @@ class SpiderWrapper(scrapy.Spider):
 			if "reference" in res_conf:
 				reference_fields.append(res_conf)
 				continue
-			parsed = self._parse_record_field(res_conf, result, meta)
 			if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
-				parsed = res_conf.data_preprocessor(parsed, meta)
+				result = res_conf.data_preprocessor(result, meta)
+			parsed = self._parse_record_field(res_conf, result, meta)
 			if "data_type" in res_conf:
 				if res_conf.data_type == "Date":
 					parsed = self._parse_date(parsed)
@@ -691,20 +691,20 @@ class SpiderWrapper(scrapy.Spider):
 						parsed = None
 			if type(parsed) is not str and type(parsed) is not unicode and parsed is not None:
 				parsed = str(parsed)
-			if "required" in res_conf and res_conf.required:
-				if parsed == None or len(parsed) == 0:
-					print('Record parse error: required field ' + res_conf.name + ' does not exist')
-					print('Full record: ' + result.encode('utf-8'))
-					return
 			if "data_validator" in res_conf and callable(res_conf.data_validator):
 				if not res_conf.data_validator(parsed, meta):
 					#print('Record parse error: field ' + res_conf.name + ' failed data validator (value "' + parsed + '")')
 					#print('Full record: ' + result)
 					return
-			if "download_images" in res_conf and res_conf.download_images:
-				parsed = self._download_images_from_html(parsed, meta)
 			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
 				parsed = res_conf.data_postprocessor(parsed, meta)
+			if "download_images" in res_conf and res_conf.download_images:
+				parsed = self._download_images_from_html(parsed, meta)
+			if "required" in res_conf and res_conf.required:
+				if parsed == None or len(parsed) == 0:
+					print('Record parse error: required field ' + res_conf.name + ' does not exist')
+					print('Full record: ' + result.encode('utf-8'))
+					return
 			meta[res_conf.name] = parsed
 
 		for res_conf in reference_fields:
