@@ -159,6 +159,15 @@ class SpiderWrapper(scrapy.Spider):
 			request.meta['$$meta'] = http_params['meta']
 			request.meta['$$encoding'] = http_params['encoding']
 			request.meta['$$referer'] = referer
+
+			if ('new_session' in http_params and http_params['new_session']) or (meta and '$$new_session' in meta and meta['$$new_session']):
+				if not hasattr(self, '_session_id'):
+					self._session_id = 1
+				request.meta['cookiejar'] = self._session_id
+				self._session_id += 1
+			elif meta and '$$session_id' in meta:
+				request.meta['cookiejar'] = meta['$$session_id']
+
 			if 'webview' in http_params and http_params['webview']:
 				request.meta['$$webview'] = True
 			else:
@@ -256,6 +265,9 @@ class SpiderWrapper(scrapy.Spider):
 
 		results = []
 
+		if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
+			response_text = res_conf.data_preprocessor(response_text, meta)
+
 		try:
 			self._prepare_res_conf(res_conf)
 			if "parser" in res_conf:
@@ -323,28 +335,32 @@ class SpiderWrapper(scrapy.Spider):
 					raise scrapy.exceptions.CloseSpider('invalid selector_xpath ' + str(res_conf.selector_xpath))
 
 			elif "selector_json" in res_conf:
-				obj = demjson.decode(response_text)
-				levels = res_conf.selector_json.split('.')
-				if type(obj) is list:
-					next_objs = obj
-				else:
-					next_objs = [ obj ]
-				for l in levels:
-					if l == '':
-						continue
-					elif l == '*':
-						next_objs = [ o.values() for o in next_objs ]
-						next_objs = [ item for sublist in next_objs for item in sublist ]
+				results = [] # default empty
+				try:
+					obj = demjson.decode(response_text)
+					levels = res_conf.selector_json.split('.')
+					if type(obj) is list:
+						next_objs = obj
 					else:
-						next_objs = [ o[l] for o in next_objs if l in o ]
-					newlist = []
-					for o in next_objs:
-						if type(o) is list:
-							newlist.extend(o)
+						next_objs = [ obj ]
+					for l in levels:
+						if l == '':
+							continue
+						elif l == '*':
+							next_objs = [ o.values() for o in next_objs ]
+							next_objs = [ item for sublist in next_objs for item in sublist ]
 						else:
-							newlist.append(o)
-					next_objs = newlist
-				results = [ json.dumps(o) for o in next_objs ]
+							next_objs = [ o[l] for o in next_objs if l in o ]
+						newlist = []
+						for o in next_objs:
+							if type(o) is list:
+								newlist.extend(o)
+							else:
+								newlist.append(o)
+						next_objs = newlist
+					results = [ json.dumps(o) for o in next_objs ]
+				except:
+					print('JSON parse failed: ' + response_text.encode('utf-8'))
 			else: # plain text
 				results = [ response_text ]
 
@@ -365,6 +381,9 @@ class SpiderWrapper(scrapy.Spider):
 					else:
 						new_results.append(res)
 				results = new_results
+
+			if "data_validator" in res_conf and callable(res_conf.data_validator):
+				results = [ r for r in results if res_conf.data_validator(r, meta) ]
 		except:
 			e = sys.exc_info()
 			print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
@@ -400,6 +419,9 @@ class SpiderWrapper(scrapy.Spider):
 		meta['$$referer'] = response.meta['$$referer']
 		meta['$$url'] = response.url
 		meta['$$encoding'] = response.meta['$$encoding']
+		meta['$$new_session'] = res_conf['new_session'] if 'new_session' in res_conf else False
+		if 'cookiejar' in response.meta and not meta['$$new_session']:
+			meta['$$session_id'] = response.meta['cookiejar']
 		try:
 			if response.meta['$$encoding']:
 				body = response.body.decode(response.meta['$$encoding']).encode('utf-8')
@@ -480,7 +502,8 @@ class SpiderWrapper(scrapy.Spider):
 							result = str(int(o))
 							break
 				except:
-					print('selector_json failed: ' + result)
+					print('JSON parse failed: ' + result.encode('utf-8'))
+					result = ''
 					pass
 			else: # plain text
 				pass
