@@ -21,7 +21,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"content": {
 			'res': {
 				'selector_xpath': '/html/body/table[2]/tbody/tr/td/table',
-				'keep_html_tags': True,
 				'next_step': 'db'
 			}
 		},
@@ -31,7 +30,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'fields': [{
 				'name': "PublicationDate",
 				'selector_css': 'td.articletddate3',
-				'selector_regex': '([0-9]*年[0-9]*月[0-9]*日)',
+				'selector_regex': u'([0-9]*年[0-9]*月[0-9]*日)',
 				'data_type': "Date",
 				'required': True
 			}, {
@@ -40,19 +39,19 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'required': True
 			}, {
 				'name': "CompanyName",
-				'selector_regex': u'企业名称：(.*)<br'
+				'selector_regex': u'企业名称：([^<]*)<br'
 			}, {
 				'name': "OrganizationNumer",
-				'selector_regex': u'组织机构代码：(.*)<br'
+				'selector_regex': u'组织机构代码：([^<]*)<br'
 			}, {
 				'name': "CorporateRep",
-				'selector_regex': u'法定代表人：(.*)<br'
+				'selector_regex': u'法定代表人：([^<]*)<br'
 			}, {
 				'name': "QualityManInCharge",
-				'selector_regex': u'质量负责人：(.*)<br'
+				'selector_regex': u'质量负责人：([^<]*)<br'
 			}, {
 				'name': "RegistrationAddress",
-				'selector_regex': u'注册地址：(.*)<br'
+				'selector_regex': u'注册地址：([^<]*)<br'
 			}, {
 				'name': "AddressID",
 				'reference': {
@@ -64,23 +63,25 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				}
 			}, {
 				'name': "PlantationType",
-				'selector_regex': u'种植品种：(.*)<br'
+				'selector_regex': u'种植品种：([^<]*)<br'
 			}, {
 				'name': "PlantationRegion",
-				'selector_regex': u'种植区域：(.*)<br'
+				'selector_regex': u'种植区域：([^<]*)<br'
 			}, {
 				'name': "InspectorName",
-				'selector_regex': u'现场检查员：(.*)<br'
+				'selector_regex': u'现场检查员：([^<]*)<br'
 			}, {
 				'name': "CFDACorporateRep",
-				'selector_regex': u'国家食品药品监督管理总局食品药品审核查验中心法定代表人：(.*)<br'
+				'selector_regex': u'国家食品药品监督管理总局食品药品审核查验中心法定代表人：([^<]*)<br'
 			}, {
 				'name': "EffectiveUntil",
-				'selector_regex': u'有效期至：(.*)<br',
+				'selector_regex': u'有效期至：([^<]*)<',
 				'data_type': 'Date'
 			}, {
 				'name': "DetailContent",
-				'selector_css': 'td.articlecontent3'
+				'selector_css': 'td.articlecontent3',
+				'strip_tags': False,
+				'download_images': True
 			}
 			]
 		}
