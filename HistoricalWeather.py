@@ -3,6 +3,7 @@ import pymssql
 import sys
 import dateparser
 import codecs
+import datetime
 
 server = "114.215.255.52"
 user = "AddDataUser"
@@ -59,8 +60,6 @@ with codecs.open('WeatherStations.txt', 'r', encoding='utf8') as f:
 		fields = [f.strip() for f in fields]
 		stations[fields[0]] = fields
 
-import datetime
-today = datetime.datetime.today().strftime('%Y-%m-%d')
 
 table_name = 'HistoricalWeather'
 cursor.execute("DELETE FROM " + table_name)
@@ -99,7 +98,7 @@ for filename in onlyfiles:
 				try:
 					station = stations[fields[0]]
 					record = [
-						today,
+						(datetime.date(2016, 1, 1) + datetime.timedelta(days=int(fields[2])-1)).strftime('%Y-%m-%d'),
 						get_region_id(station[2], station[1]),
 						station[1], #region
 						fields[4], #high
