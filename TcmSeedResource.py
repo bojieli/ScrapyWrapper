@@ -2,6 +2,18 @@
 # -*- coding:utf-8 -*-
 from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
+import re
+
+def is_page_higher_than_curr(url, meta):
+	m = re.search('page=([0-9]*)', meta['$$url'])
+	if not m:
+		return True
+	curr_page = int(m.group(1))
+	m = re.search('page=([0-9]*)', url)
+	if not m:
+		return False
+	next_page = int(m.group(1))
+	return next_page > curr_page
 
 class ScrapyConfig(ScrapyWrapperConfig):
 	begin_urls = ["http://124.254.6.83:8088/querymain.asp"]
@@ -14,6 +26,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_xpath': '//a/@href',
 				'selector_regex': u'(show.asp\?.*)',
 				'next_step': 'content',
+				'new_session': True
 			}
 		},
 		"content": {
@@ -28,6 +41,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			},
 			{
 				'selector_href_text': u'下一页',
+				'data_validator': is_page_higher_than_curr,
 				'next_step': 'content'
 			}]
 		},
