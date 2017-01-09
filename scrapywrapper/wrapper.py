@@ -225,6 +225,10 @@ class SpiderWrapper(scrapy.Spider):
 			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[text()[normalize-space()="' + res_conf.selector_table_sibling + '"]]]/following-sibling::td'
 			del res_conf.selector_table_sibling
 
+		if "selector_dt" in res_conf:
+			res_conf.selector_xpath = '//dt[descendant-or-self::*[text()[normalize-space()="' + res_conf.selector_dt + '"]]]/following-sibling::dd'
+			del res_conf.selector_dt
+
 		if "selector_table_next_row_contains" in res_conf:
 			res_conf.selector_xpath = '(//td|//th)[descendant-or-self::*[contains(text(), "' + res_conf.selector_table_next_row_contains + '")]]/ancestor::tr/following-sibling::tr/td'
 			del res_conf.selector_table_next_row_contains
@@ -497,7 +501,7 @@ class SpiderWrapper(scrapy.Spider):
 			print('    while parsing response (' + str(len(result)) + ' bytes)')
 			traceback.print_tb(e[2])
 
-		return result.strip()
+		return result.strip() if result else None
 
 	def _parse_reference_field(self, res_conf, record):
 		local_field = res_conf.name
@@ -612,6 +616,8 @@ class SpiderWrapper(scrapy.Spider):
 		return None
 
 	def _parse_int(self, text):
+		if not text:
+			return 0
 		text = text.replace(',', '')
 		try:
 			m = re.search('[0-9-][0-9]*', text.replace(',', ''))
@@ -913,6 +919,7 @@ class SpiderWrapper(scrapy.Spider):
 
 	def _http_request_callback(self, response):
 		step_conf = self.config.steps[response.meta['$$step']]
+		print(response.body)
 		results = []
 		if "res" in step_conf:
 			if callable(step_conf.res):

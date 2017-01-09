@@ -65,7 +65,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'name': "DetailContent",
 				'selector_css': '#zoomcon',
 				'strip_tags': False,
-				'required': True
+				'download_images': True
 			}],
 			'res': {
 				'selector_css': "#zoomcon table tr",
@@ -83,7 +83,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'name': 'DiseaseName',
 				'selector_xpath': '//td[1]',
 				'data_validator': lambda d, meta: "*" not in d,
-				'data_postprocessor': lambda d, meta: d.replace(' ', '').replace('　', ''),
+				'data_postprocessor': lambda d, meta: d.replace(' ', '').replace(u'　', ''),
 				'required': True
 			}, {
 				'name': 'AffectedPopulation',

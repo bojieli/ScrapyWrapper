@@ -5,7 +5,7 @@ from scrapywrapper.config import ScrapyWrapperConfig
 
 class ScrapyConfig(ScrapyWrapperConfig):
 	def url_generator(self):
-		for i in range(3542343,0,-1):
+		for i in range(3605562,0,-1):
 			yield 'http://db.yaozh.com/api/index.php/Home/index/yaopinzhongbiao/id/' + str(i)
 
 	begin_urls = url_generator
@@ -44,13 +44,13 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_json': "data.me_brandname"
 			}, {
 				'name': "DosageType",
-				'selector_json': "data.me_jixing"
-			}, {
-				'name': "Specification",
 				'selector_json': "data.me_guifanjixing"
 			}, {
-				'name': "PackagingRatio",
+				'name': "Specification",
 				'selector_json': "data.me_guige"
+			}, {
+				'name': "PackagingRatio",
+				'selector_json': "data.me_baozhuanguige"
 			}, {
 				'name': "UnitOfMeasurement",
 				'selector_json': "data.me_packaging"

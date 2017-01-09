@@ -58,7 +58,9 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_table_sibling': u'产品批准文号'
 			}, {
 				'name': "DetailContent",
-				'selector_table_sibling': u'违法内容简述'
+				'selector_table_sibling': u'违法内容简述',
+				'strip_tags': False,
+				'download_images': True
 			}, {
 				'name': "CFDAAnnouncementNumber",
 				'selector_table_sibling': u'总局通告号'

@@ -9,7 +9,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"begin": {
 			'req': {'webview': True},
 			'res': {
-				'selector': lambda _,__: "https://s.1688.com/company/company_search.htm?keywords=%D6%D0%D2%A9%B2%C4&button_click=top&n=y",
+				'selector': lambda _,__: [ "https://s.1688.com/company/company_search.htm?keywords=%D6%D0%D2%A9%B2%C4&button_click=top&n=y" ],
 				'next_step': 'list'
 			}
 		},

@@ -31,7 +31,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'fields': [{
 				'name': "PublicationDate",
 				'selector_css': 'td.articletddate3',
-				'selector_regex': '([0-9]*年[0-9]*月[0-9]*日)',
+				'selector_regex': u'([0-9]*年[0-9]*月[0-9]*日)',
 				'data_type': "Date",
 				'required': True
 			}, {
@@ -43,7 +43,9 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_table_sibling': u'药品名称'
 			}, {
 				'name': "DetailContent",
-				'selector_css': 'td.articlecontent3'
+				'selector_css': 'td.articlecontent3',
+				'strip_tags': False,
+				'download_images': True
 			}, {
 				'name': "ClassificationNumber",
 				'selector_css': 'td.articletitle3',

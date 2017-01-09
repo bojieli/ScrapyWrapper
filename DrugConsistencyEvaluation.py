@@ -3,6 +3,7 @@
 from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
 from urlparse import urljoin
+import sys
 
 base_url = "http://www.sda.gov.cn/WS01/"
 
@@ -26,7 +27,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"content": {
 			'res': {
 				'selector_xpath': '/html/body/table[2]/tbody/tr/td/table',
-				'keep_html_tags': True,
 				'next_step': 'db'
 			}
 		},
@@ -36,7 +36,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'fields': [{
 				'name': "PublicationDate",
 				'selector_css': 'td.articletddate3',
-				'selector_regex': '([0-9]*年[0-9]*月[0-9]*日)',
+				'selector_regex': u'([0-9]*年[0-9]*月[0-9]*日)',
 				'data_type': "Date",
 				'required': True
 			}, {
@@ -45,12 +45,15 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'required': True
 			}, {
 				'name': "DetailContent",
-				'selector_css': 'td.articlecontent3'
+				'selector_css': 'td.articlecontent3',
+				'strip_tags': False,
+				'download_images': True
 			}, {
 				'name': "ClassificationNumber",
-				'data_preprocessor': lambda result, meta: meta['referer'],
-				'selector_regex': '.*CL([0-9]*)',
-				'data_postprocessor': lambda n, meta: '1' if n == '1033' else '2' if n == '1842' or n == '1030' or n == '1031' else '3' if n == '1043' or n == '0885' or n ==     '0884' else '0'
+				'data_preprocessor': lambda result, meta: meta['$$referer'],
+				'selector_regex': 'CL([0-9]*)',
+				'data_postprocessor': lambda n, meta: '1' if n == '1749' else '3' if n == '1750' else '2',
+				'required': True
 			}
 			]
 		}
