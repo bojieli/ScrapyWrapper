@@ -103,8 +103,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_json': "me_pizhunwenhao"
 			}, {
 				'name': "Manufacturer",
-				'selector_json': "me_changjia",
-				'required': True
+				'selector_json': "me_changjia"
 			}, {
 				'name': "Specification",
 				'selector_json': "me_guige"

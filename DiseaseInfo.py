@@ -5,10 +5,10 @@ from scrapywrapper.config import ScrapyWrapperConfig
 
 
 class ScrapyConfig(ScrapyWrapperConfig):
-	crawlera_enabled = True
 	begin_urls = ["http://www.phsciencedata.cn/Share/ky_sjml.jsp?id=8defcfc2-b9a4-4225-b92c-ebb002321cea&show=0"]
 	steps = {
 		"begin": {
+			'req': { 'webview': True },
 			'res': [{
 				'selector_css': 'div.biao',
 				'next_step': 'db_major_class'
@@ -50,6 +50,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}
 		},
 		"content": {
+			'req': { 'webview': True },
 			'res': {
 				'selector_css': '.content_r',
 				'next_step': 'db'

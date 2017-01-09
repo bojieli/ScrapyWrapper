@@ -4,6 +4,20 @@ from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
 import datetime
 
+def PMIndexToCategory(index):
+	index = int(index)
+	if index <= 50:
+		return u'优'
+	if index <= 100:
+		return u'良'
+	if index <= 150:
+		return u'轻度污染'
+	if index <= 200:
+		return u'中度污染'
+	if index <= 300:
+		return u'重度污染'
+	return u'严重污染'
+
 class ScrapyConfig(ScrapyWrapperConfig):
 	begin_urls = ["http://106.37.208.228:8082/Home/Default"]
 	steps = {
@@ -29,11 +43,11 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'data_type': 'Date'
 			}, {
 				'name': "ForecastDate",
-				'value': datetime.datetime.now().strftime('%Y-%m-%d'),
+				'value': (datetime.datetime.now() + datetime.timedelta(days=1)).strftime('%Y-%m-%d'),
 				'data_type': 'Date'
 			}, {
 				'name': "RegionID",
-				'reference': { 'field': 'SourceLocation', 'table': 'TB_Addresses', 'remote_field': 'Name', 'remote_id_field': 'PID', 'match': 'lpm' }
+				'reference': { 'field': 'Region', 'table': 'TB_Addresses', 'remote_field': 'Name', 'remote_id_field': 'PID', 'match': 'lpm' }
 			}, {
 				'name': "Region",
 				'selector_json': 'Name',
@@ -43,8 +57,18 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_json': 'AirIndex_From',
 				'required': True
 			}, {
+				'name': "PMIndexUpperLimit",
+				'selector_json': 'AirIndex_To',
+				'required': True
+			}, {
+				'name': "PMCategoryLowerLimit",
+				'selector_json': 'AirIndex_From',
+				'data_postprocessor': lambda i,_: PMIndexToCategory(i),
+				'required': True
+			}, {
 				'name': "PMCategoryUpperLimit",
 				'selector_json': 'AirIndex_To',
+				'data_postprocessor': lambda i,_: PMIndexToCategory(i),
 				'required': True
 			}, {
 				'name': "PMTwoDotFive",
