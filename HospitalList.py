@@ -4,6 +4,7 @@ from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
 
 class ScrapyConfig(ScrapyWrapperConfig):
+	#crawlera_enabled = True
 	begin_urls = ["http://www.pharmnet.com.cn/search/template/yljg_index.htm"]
 	steps = {
 		"begin": {
@@ -19,7 +20,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_regex': '(/search/detail.*)',
 				'next_step': 'content'
 			}, {
-				'selector_href_text': ' >> ',
+				'selector_xpath': '//a/@href',
+				'selector_regex': '(/search/index.cgi\?p=.*&cate1=&terms=&c1=.*&c2=.*)',
 				'next_step': 'list'
 			}]
 		},
