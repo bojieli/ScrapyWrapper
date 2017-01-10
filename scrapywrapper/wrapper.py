@@ -79,7 +79,7 @@ class SpiderWrapper(scrapy.Spider):
 				if callable(req_conf[k]):
 					conf[k] = req_conf[k](url, meta)
 				else:
-					conf[k] = req_conf[k]
+					conf[k] = copy.deepcopy(req_conf[k])
 
 		if type(conf['post_formdata']) is str:
 			l = conf['post_formdata'].split('&')
@@ -404,10 +404,11 @@ class SpiderWrapper(scrapy.Spider):
 	def _mangle_text_results(self, text_results, res_conf, meta):
 		results = []
 		for text_result in text_results:
-			result = (text_result, res_conf.next_step, meta)
+			local_meta = copy.deepcopy(meta)
+			result = (text_result, res_conf.next_step, local_meta)
 			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
-				mangled = res_conf.data_postprocessor(text_result, meta)
-				results.append((mangled, res_conf.next_step, meta))
+				mangled = res_conf.data_postprocessor(text_result, local_meta)
+				results.append((mangled, res_conf.next_step, local_meta))
 			else:
 				results.append(result)
 		return results
@@ -437,7 +438,10 @@ class SpiderWrapper(scrapy.Spider):
 		if '$$http_debug' in response.meta and response.meta['$$http_debug']:
 			print('----------------')
 			print(response.url)
-			print(response.request)
+			try:
+				print(response.request.body)
+			except:
+				print(response.request)
 			print(body)
 			print('================')
 
@@ -728,7 +732,7 @@ class SpiderWrapper(scrapy.Spider):
 		if type(meta) is not dict:
 			meta = {}
 		else: # copy the dict!
-			meta = copy.copy(meta)
+			meta = copy.deepcopy(meta)
 		meta['$$referer'] = url
 
 		if "fields" not in conf:
@@ -797,6 +801,7 @@ class SpiderWrapper(scrapy.Spider):
 		if '$$image_urls' in meta:
 			self._save_image_urls_to_db(meta['$$image_urls'], meta)
 
+		print(result, curr_step)
 		return (result, curr_step, meta)
 
 	def _ftp_mkdir_recursive(self, path):
@@ -906,7 +911,7 @@ class SpiderWrapper(scrapy.Spider):
 
 			if type(res_conf) is not list:
 				res_conf = [ res_conf ]
-			results = [ (response.body, one_conf.next_step, meta) for one_conf in res_conf ]
+			results = [ (response.body, one_conf.next_step, copy.deepcopy(meta)) for one_conf in res_conf ]
 			for req in self._yield_requests_from_parse_results(response.url, results):
 				yield req
 
