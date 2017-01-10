@@ -39,8 +39,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'required': True
 			}, {
 				'name': '$$TcmName',
-				'selector_xpath': '//div[@class="breedtitle"]//h1',
-				'selector_regex': '# (.*)',
+				'selector_xpath': '//div[@class="breedtitle"]//h1/text()',
 				'required': True
 			}]
 		},
