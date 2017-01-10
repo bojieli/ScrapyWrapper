@@ -71,7 +71,8 @@ class SpiderWrapper(scrapy.Spider):
 			'post_formdata': None,
 			'encoding': 'utf-8',
 			'dont_filter': False, # automatic URL deduplication
-			'webview': False
+			'webview': False,
+			'debug': False
 		}
 		for k in conf:
 			if k in req_conf:
@@ -156,7 +157,7 @@ class SpiderWrapper(scrapy.Spider):
 					callback=self._http_request_callback)
 
 			request.meta['$$step'] = curr_step
-			request.meta['$$meta'] = copy.copy(http_params['meta'])
+			request.meta['$$meta'] = http_params['meta']
 			request.meta['$$encoding'] = http_params['encoding']
 			request.meta['$$referer'] = referer
 
@@ -167,6 +168,8 @@ class SpiderWrapper(scrapy.Spider):
 				self._session_id += 1
 			elif meta and '$$session_id' in meta:
 				request.meta['cookiejar'] = meta['$$session_id']
+
+			request.meta['$$http_debug'] = 'debug' in http_params and http_params['debug']
 
 			if 'webview' in http_params and http_params['webview']:
 				request.meta['$$webview'] = True
@@ -430,6 +433,14 @@ class SpiderWrapper(scrapy.Spider):
 				body = response.body_as_unicode()
 		except:
 			body = response.body_as_unicode()
+
+		if '$$http_debug' in response.meta and response.meta['$$http_debug']:
+			print('----------------')
+			print(response.url)
+			print(response.request)
+			print(body)
+			print('================')
+
 		return self._parse_and_mangle_text_response(body, res_conf, meta)
 
 	def _parse_record_field(self, res_conf, result, meta):
@@ -924,7 +935,7 @@ class SpiderWrapper(scrapy.Spider):
 		response = AttrDict()
 		response.url = url
 		response.meta = dict()
-		response.meta['$$meta'] = copy.copy(result[2])
+		response.meta['$$meta'] = result[2]
 		response.meta['$$step'] = result[1]
 		response.meta['$$conf'] = conf
 		response.meta['$$encoding'] = result[2]['$$encoding'] if '$$encoding' in result[2] else None

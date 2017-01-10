@@ -105,6 +105,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 					'guige': lambda _, meta: meta['Specification'],
 					'market': '1'
 				},
+				'debug': True
 			},
 			'res': [{
 				'selector_json': 'data',
