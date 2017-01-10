@@ -577,6 +577,10 @@ class SpiderWrapper(scrapy.Spider):
 		else:
 			match = res_conf.reference.match
 
+		for d in local_data:
+			if d is None:
+				return False
+
 		is_cached = "cache" not in res_conf.reference or res_conf.reference.cache
 		# find from cache
 		if remote_table in self.reference_cache:
