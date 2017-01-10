@@ -33,7 +33,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'name': "DrugID",
 				'reference': {
 					'table': "TB_Resources_MedicineMadeInChina",
-					'fields': ["DrugGenericName", "DrugManufacturerName"],
+					'fields': ["DrugName", "DrugManufacturerName"],
 					'remote_fields': ["CnName", "ProductionUnit"],
 					'remote_id_field': 'ResID'
 				}
@@ -55,7 +55,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_json': u"单位"
 			}, {
 				'name': "RetailPriceCap",
-				'selector_json': u"最高零售价(元)"
+				'selector_json': u"最高零售价(元)",
+				'data_type': 'float'
 			}, {
 				'name': "DrugManufacturerName",
 				'selector_json': u"生产企业"
@@ -65,6 +66,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': "EffectiveDate",
 				'selector_json': u"执行日期",
+				'data_type': 'Date'
 			}, {
 				'name': "RegionID",
 				'reference': {

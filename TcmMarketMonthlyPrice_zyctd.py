@@ -156,7 +156,9 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': 'CurrentDate',
 				'selector': lambda _, meta: meta['$$Year'] + '-' + meta['$$Month'] + '-' + '01',
-				'validator': lambda _, meta: datetime.date(int(meta['$$Year']), int(meta['$$Month']), 1) <= datetime.date.today()
+				'validator': lambda _, meta: datetime.date(int(meta['$$Year']), int(meta['$$Month']), 1) <= datetime.date.today(),
+				'data_type': 'Date',
+				'required': True
 			}, {
 				'name': 'Price',
 				'selector_json': 'Price',

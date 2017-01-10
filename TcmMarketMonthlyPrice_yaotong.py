@@ -106,14 +106,37 @@ class ScrapyConfig(ScrapyWrapperConfig):
 					'market': '1'
 				},
 			},
-			'res': {
+			'res': [{
 				'selector_json': 'data',
-				'next_step': 'db'
-			}
+				'next_step': 'db_month'
+			}, {
+				'selector_json': 'data',
+				'next_step': 'db_day'
+			}]
 		},
-		"db": {
+		"db_month": {
 			'type': "db",
 			'table_name': "TcmMarketMonthlyPrice",
+			'fields': [{
+				'name': 'CurrentDate',
+				'selector_json': 'Date_time',
+				'data_type': 'Date',
+				# only get the 1st day price per month
+				'validator': lambda datestr, _: datestr.split('-')[2] == '01',
+				'required': True
+			}, {
+				'name': 'Price',
+				'selector_json': 'DayCapilization',
+				'data_type': 'float',
+				'required': True
+			}, {
+				'name': 'PriceSource',
+				'value': '3'
+			}]
+		},
+		"db_day": {
+			'type': "db",
+			'table_name': "TcmMarketDailyPrice",
 			'fields': [{
 				'name': 'CurrentDate',
 				'selector_json': 'Date_time',
@@ -124,9 +147,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_json': 'DayCapilization',
 				'data_type': 'float',
 				'required': True
-			}, {
-				'name': 'PriceSource',
-				'value': '3'
 			}]
 		}
 	}

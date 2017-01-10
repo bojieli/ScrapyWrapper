@@ -5,7 +5,7 @@ from scrapywrapper.config import ScrapyWrapperConfig
 import datetime
 
 class ScrapyConfig(ScrapyWrapperConfig):
-	crawlera_enabled = True
+	#crawlera_enabled = True
 
 	def url_generator(self):
 		for i in range(158900,600000):
