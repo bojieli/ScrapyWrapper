@@ -9,7 +9,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 	steps = {
 		"begin": {
 			'res': {
-			    'parser': 'js-string',
+			    'parser': 'js-object',
+				'selector_json': 'rank',
 				'selector': lambda s, meta: s.split(',')[1],
 				'next_step': 'content'
 			}
@@ -20,7 +21,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			},
 			'res': {
 				'selector_css': 'div.article',
-				'keep_html_tags': False,
 				'next_step': 'db'
 			},
 			'fields': [{
@@ -40,6 +40,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'required': True
 			}, {
 				'name': "OperationReport",
+				'strip_tags': False,
 				'required': True
 			}, {
 				'name': "ReportDate",

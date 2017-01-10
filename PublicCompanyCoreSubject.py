@@ -9,7 +9,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 	steps = {
 		"begin": {
 			'res': {
-			    'parser': 'js-string',
+			    'parser': 'js-object',
+				'selector_json': 'rank',
 				'selector': lambda s, meta: s.split(',')[1],
 				'next_step': 'content'
 			}
@@ -46,6 +47,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'name': "DetailContent",
 				'selector_regex': '<font>.*</font>(.*)</p>',
 				'data_postprocessor': lambda d, meta: d.strip(),
+				'strip_tags': False,
+				'download_images': True,
 				'required': True
 			}, {
 				'name': "ReportDate",

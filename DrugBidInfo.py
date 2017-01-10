@@ -76,7 +76,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 					'field': "BidProvince",
 					'remote_field': "Name",
 					'remote_id_field': 'PID',
-					'match': 'prefix'
+					'match': 'lpm'
 				}
 			}, {
 				'name': "PublicationDate",
