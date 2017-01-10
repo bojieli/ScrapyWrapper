@@ -801,7 +801,6 @@ class SpiderWrapper(scrapy.Spider):
 		if '$$image_urls' in meta:
 			self._save_image_urls_to_db(meta['$$image_urls'], meta)
 
-		print(result, curr_step)
 		return (result, curr_step, meta)
 
 	def _ftp_mkdir_recursive(self, path):
