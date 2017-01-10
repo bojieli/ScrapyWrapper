@@ -202,7 +202,8 @@ class SpiderWrapper(scrapy.Spider):
 			raise "Only mssql is supported!"
 		self.dbconn = pymssql.connect(self.config.db.server, self.config.db.user, self.config.db.password, self.config.db.name, charset="utf8")
 		self.cursor = self.dbconn.cursor(as_dict=True)
-		self.cursor.execute('SET ANSI_WARNINGS off')
+		self.cursor.execute('SET ANSI_WARNINGS OFF')
+		self.cursor.execute('SET IMPLICIT_TRANSACTIONS OFF')
 		#self.db_column_types = self._get_db_columns(self.config.table_name)
 
 	def _get_db_columns(self, table_name):
@@ -1034,7 +1035,6 @@ class SpiderWrapper(scrapy.Spider):
 		data = tuple([item for sublist in table_data for item in sublist])
 		try:
 			self.cursor.execute(sql, data)
-			self.dbconn.commit()
 		except:
 			e = sys.exc_info()
 			print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
