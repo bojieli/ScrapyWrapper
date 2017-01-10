@@ -190,6 +190,7 @@ class SpiderWrapper(scrapy.Spider):
 		c.file_db_table = AttrDict(c.file_db_table)
 		c.url_table = AttrDict(c.url_table)
 		c.steps = self._to_attr_dict(c.steps)
+		self.reference_cache = {}
 
 	def _init_db(self):
 		if not self.config.db:
@@ -560,6 +561,16 @@ class SpiderWrapper(scrapy.Spider):
 		else:
 			match = res_conf.reference.match
 
+		is_cached = "cache" not in res_conf.reference or res_conf.reference.cache
+		# find from cache
+		if remote_table in self.reference_cache:
+			to_match = '&&&'.join(local_data)
+			if to_match in self.reference_cache[remote_table]:
+				record[local_field] = self.reference_cache[remote_table][to_match]
+				return True
+		elif is_cached: # initialize the cache
+			self.reference_cache[remote_table] = {}
+
 		if match == 'exact':
 			self.cursor.execute('SELECT ' + remote_id_field + ' FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' = %s' for r in remote_fields ]), tuple(local_data))
 		elif match == 'prefix':
@@ -567,11 +578,24 @@ class SpiderWrapper(scrapy.Spider):
 		elif match == 'wildcard':
 			self.cursor.execute('SELECT ' + remote_id_field + ' FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]), tuple([ '%' + d + '%' for d in local_data]))
 		elif match == 'lpm':
+			# find from cache
+			if is_cached:
+				to_match_cache = local_data
+				while to_match_cache[0] and len(to_match_cache[0]) != 0:
+					to_match = '&&&'.join(to_match_cache)
+					if to_match in self.reference_cache[remote_table]:
+						record[local_field] = self.reference_cache[remote_table][to_match]
+						return True
+					else: # try with a shorter prefix
+						to_match_cache = [ d[:-1] for d in to_match_cache ]
+			# fetch from DB
 			while local_data[0] and len(local_data[0]) != 0:
 				self.cursor.execute('SELECT ' + remote_id_field + ' FROM ' + remote_table + ' WHERE ' + ' AND '.join([ r + ' LIKE %s' for r in remote_fields ]), tuple([ d + '%' for d in local_data ]))
 				row = self.cursor.fetchone()
 				if row:
 					record[local_field] = row[remote_id_field]
+					if is_cached:
+						self.reference_cache[remote_table]['&&&'.join(local_data)] = row[remote_id_field]
 					return True
 				else: # try with a shorter prefix
 					local_data = [ d[:-1] for d in local_data ]
@@ -583,6 +607,8 @@ class SpiderWrapper(scrapy.Spider):
 		row = self.cursor.fetchone()
 		if row:
 			record[local_field] = row[remote_id_field]
+			if is_cached:
+				self.reference_cache[remote_table]['&&&'.join(local_data)] = row[remote_id_field]
 			return True
 		else:
 			if 'insert_if_not_exist' in res_conf.reference and res_conf.reference['insert_if_not_exist']:

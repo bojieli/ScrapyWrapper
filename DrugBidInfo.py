@@ -4,6 +4,8 @@ from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
 
 class ScrapyConfig(ScrapyWrapperConfig):
+	#crawlera_enabled = True
+
 	def url_generator(self):
 		for i in range(3605562,0,-1):
 			yield 'http://db.yaozh.com/api/index.php/Home/index/yaopinzhongbiao/id/' + str(i)
@@ -33,7 +35,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 					'table': "TB_Resources_MedicineMadeInChina",
 					'fields': ["DrugGenericName", "DrugManufacturerName"],
 					'remote_fields': ["CnName", "ProductionUnit"],
-					'remote_id_field': 'ResID'
+					'remote_id_field': 'ResID',
+					'cache': False
 				}
 			}, {
 				'name': "DrugGenericName",
