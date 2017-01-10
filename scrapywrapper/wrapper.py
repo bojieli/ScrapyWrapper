@@ -156,7 +156,7 @@ class SpiderWrapper(scrapy.Spider):
 					callback=self._http_request_callback)
 
 			request.meta['$$step'] = curr_step
-			request.meta['$$meta'] = http_params['meta']
+			request.meta['$$meta'] = copy.copy(http_params['meta'])
 			request.meta['$$encoding'] = http_params['encoding']
 			request.meta['$$referer'] = referer
 
@@ -924,10 +924,10 @@ class SpiderWrapper(scrapy.Spider):
 		response = AttrDict()
 		response.url = url
 		response.meta = dict()
-		response.meta['$$meta'] = result[2]
+		response.meta['$$meta'] = copy.copy(result[2])
 		response.meta['$$step'] = result[1]
 		response.meta['$$conf'] = conf
-		response.meta['$$encoding'] = response.meta['$$encoding'] if '$$encoding' in response.meta else None
+		response.meta['$$encoding'] = result[2]['$$encoding'] if '$$encoding' in result[2] else None
 		response.meta['$$referer'] = result[2]['$$referer'] if '$$referer' in result[2] else None
 		response.body = result[0]
 		response.body_as_unicode = lambda: response.body
