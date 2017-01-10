@@ -42,7 +42,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'post_formdata': {
 					'ycnam': lambda _, meta: meta['$$TcmName'],
 					'market': '1'
-				}
+				},
 			},
 			'res': {
 				'selector_json': 'data',
@@ -105,7 +105,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 					'guige': lambda _, meta: meta['Specification'],
 					'market': '1'
 				},
-				'debug': True
 			},
 			'res': [{
 				'selector_json': 'data',
@@ -123,7 +122,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_json': 'Date_time',
 				'data_type': 'Date',
 				# only get the 1st day price per month
-				'validator': lambda datestr, _: datestr.split('-')[2] == '01',
+				'data_validator': lambda datestr, _: datestr.split('-')[2] == '01',
 				'required': True
 			}, {
 				'name': 'Price',
