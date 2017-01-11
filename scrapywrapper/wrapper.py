@@ -200,10 +200,9 @@ class SpiderWrapper(scrapy.Spider):
 			raise "Database config not specified"
 		if self.config.db.type != 'mssql':
 			raise "Only mssql is supported!"
-		self.dbconn = pymssql.connect(self.config.db.server, self.config.db.user, self.config.db.password, self.config.db.name, charset="utf8")
-		self.cursor = self.dbconn.cursor(as_dict=True)
+		self.dbconn = pymssql.connect(self.config.db.server, self.config.db.user, self.config.db.password, self.config.db.name, charset="utf8", timeout=60, login_timeout=60, autocommit=True, as_dict=True)
+		self.cursor = self.dbconn.cursor()
 		self.cursor.execute('SET ANSI_WARNINGS OFF')
-		self.cursor.execute('SET IMPLICIT_TRANSACTIONS OFF')
 		#self.db_column_types = self._get_db_columns(self.config.table_name)
 
 	def _get_db_columns(self, table_name):
@@ -799,7 +798,17 @@ class SpiderWrapper(scrapy.Spider):
 			for res_conf in conf.fields:
 				if res_conf.name in meta and meta[res_conf.name] is None:
 					del meta[res_conf.name]
-			data_guid = self._insert_db_record(conf, url, meta)
+
+			row = self._remove_metadata_fields(meta)
+			data_guid = None
+			if 'unique' in conf:
+				data_guid = self._get_guid_by_unique_constraint(conf, conf.unique, url, row)
+				if data_guid:
+					if 'upsert' in conf and conf.upsert:
+						self._update_db_record(conf, data_guid, url, row)
+			if not data_guid:
+				data_guid = self._insert_db_record(conf, url, row)
+
 			meta['$$info_id'] = data_guid
 			meta['$$info_table'] = conf.table_name
 
@@ -1006,26 +1015,49 @@ class SpiderWrapper(scrapy.Spider):
 			yield req
 
 
-	def _insert_db_record(self, conf, url, row):
+	def _get_guid_by_unique_constraint(self, conf, unique, url, row):
 		if "guid_field" not in conf:
 			conf.guid_field = self.config.default_guid_field
-		# data tab;e
-		data_guid = str(uuid.uuid4())
-		row[conf.guid_field] = data_guid
-		# remove internal metadata fields
-		new_row = {}
-		for k in row:
-			if not k.startswith('$$'):
-				new_row[k] = row[k]
-		self.insert_row(conf.table_name, new_row)
-		# url table
+		constraint_fields = [ field + ' = %s' for field in unique ]
+		constraint_data = [ row[field] if field in row else '' for field in unique ]
+		self.cursor.execute("SELECT " + conf.guid_field + " FROM " + conf.table_name + " WHERE " + ' AND '.join(constraint_fields), tuple(constraint_data))
+		for row in self.cursor:
+			return row[conf.guid_field]
+		return None
+		
+	def _insert_url_table(self, conf, data_guid, url, action="Inserted"):
 		url_row = {}
 		url_row[conf.guid_field] = str(uuid.uuid4())
 		url_row[self.config.url_table.id_field] = data_guid
 		url_row[self.config.url_table.url_field] = url
 		url_row[self.config.url_table.time_field] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 		self.insert_row(self.config.url_table.table_name, url_row)
-		print(url_row[self.config.url_table.time_field] + " [" + self.name + "] Inserted one db record to table " + conf.table_name + " (URL: " + url + " )")
+		print(url_row[self.config.url_table.time_field] + " [" + self.name + "] " + action + " one db record to table " + conf.table_name + " (URL: " + url + " )")
+
+	def _update_db_record(self, conf, guid, url, row):
+		if "guid_field" not in conf:
+			conf.guid_field = self.config.default_guid_field
+		update_fields = [ field + ' = %s' for field in row ]
+		update_data = [ row[field] if field in row else '' for field in row ]
+		self.cursor.execute("UPDATE " + conf.table_name + " SET " + ','.join(update_fields) + " WHERE " + conf.guid_field + " = %s", tuple(update_data + [guid]))
+		self._insert_url_table(conf, guid, url, action="Updated")
+		return guid
+
+	def _remove_metadata_fields(self, row):
+		new_row = {}
+		for k in row:
+			if not k.startswith('$$'):
+				new_row[k] = row[k]
+		return new_row
+
+	def _insert_db_record(self, conf, url, row):
+		if "guid_field" not in conf:
+			conf.guid_field = self.config.default_guid_field
+		# data table
+		data_guid = str(uuid.uuid4())
+		row[conf.guid_field] = data_guid
+		self.insert_row(conf.table_name, row)
+		self._insert_url_table(conf, data_guid, url, action="Inserted")
 		return data_guid
 
 	def insert_row(self, table_name, row):
