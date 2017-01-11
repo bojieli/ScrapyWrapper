@@ -46,6 +46,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"TcmMarketDailyPrice": {
 			'type': 'db',
 			'table_name': 'TcmMarketDailyPrice',
+			'unique': ['TcmID', 'Specification', 'MarketID', 'CurrentDate'],
+			'upsert': True,
 			'fields': [{
 				'name': 'MarketID',
 				'reference': {
@@ -88,6 +90,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"TcmPlaceOfOriginPrice": {
 			'type': "db",
 			'table_name': "TcmPlaceOfOriginPrice",
+			'unique': ['TcmID', 'Specification', 'PlaceOfOrigin', 'CurrentDate'],
+			'upsert': True,
 			'fields': [{
 				'name': 'PlaceOfOrigin',
 				'selector_xpath': '//td[2]',

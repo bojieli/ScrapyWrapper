@@ -96,6 +96,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"month_price": {
 			'type': "db",
 			'table_name': "TcmPlaceOfOriginPrice",
+			'unique': ['CurrentDate', 'Specification', 'PlaceOfOrigin', 'TcmID'],
+			'upsert': True,
 			'fields': [{
 				'name': '$$Month',
 				'selector': lambda _, meta: str(int(meta['$$record_count']) + 1),

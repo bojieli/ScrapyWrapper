@@ -117,6 +117,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db_month": {
 			'type': "db",
 			'table_name': "TcmMarketMonthlyPrice",
+			'unique': ['TcmID', 'Specification', 'MarketID', 'CurrentDate', 'PriceSource'],
+			'upsert': True,
 			'fields': [{
 				'name': 'CurrentDate',
 				'selector_json': 'Date_time',
@@ -137,6 +139,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db_day": {
 			'type': "db",
 			'table_name': "TcmMarketDailyPrice",
+			'unique': ['TcmID', 'Specification', 'MarketID', 'CurrentDate'],
+			'upsert': True,
 			'fields': [{
 				'name': 'CurrentDate',
 				'selector_json': 'Date_time',
