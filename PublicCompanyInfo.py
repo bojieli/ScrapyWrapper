@@ -8,8 +8,9 @@ class ScrapyConfig(ScrapyWrapperConfig):
 	steps = {
 		"begin": {
 			'res': {
-			    'parser': 'js-string',
-				'selector': lambda s: s.split(',')[1],
+			    'parser': 'js-object',
+				'selector_json': 'rank',
+				'selector': lambda s, meta: s.split(',')[1],
 				'next_step': 'content'
 			}
 		},
@@ -26,6 +27,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "PublicCompanyInfo",
+			'unique': ['StockCode'],
+			'upsert': True,
 			'fields': [{
 				'name': "ChineseName",
 				'selector_table_sibling': u'公司名称',

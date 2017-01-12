@@ -9,7 +9,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 	steps = {
 		"begin": {
 			'res': {
-			    'parser': 'js-string',
+			    'parser': 'js-object',
+				'selector_json': 'rank',
 				'selector': lambda s, meta: s.split(',')[1],
 				'next_step': 'content'
 			}

@@ -21,7 +21,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			},
 			'res': {
 				'selector_css': 'div.section.first > div.article',
-				'keep_html_tags': False,
+				'strip_tags': True,
 				'next_step': 'db'
 			},
 			'fields': [{
@@ -31,6 +31,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "PublicCompanyCoreBusiness",
+			'unique': ['CompanyID'],
+			'upsert': True,
 			'fields': [{
 				'name': 'CompanyID',
 				'reference': {
