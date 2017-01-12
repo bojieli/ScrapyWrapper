@@ -275,14 +275,7 @@ class SpiderWrapper(scrapy.Spider):
 		try:
 			self._prepare_res_conf(res_conf)
 			if "parser" in res_conf:
-				if res_conf.parser == "js-string":
-					from slimit import ast
-					from slimit.parser import Parser
-					from slimit.visitors import nodevisitor
-					tree = Parser().parse(response_text)
-					results = [ getattr(node, 'value') for node in nodevisitor.visit(tree) if isinstance(node, ast.String) ]
-
-				elif res_conf.parser == 'js-object':
+				if res_conf.parser == 'js-object':
 					m = re.search('var\s+[a-zA-Z0-9_$]+\s*=\s*(.*)', response_text)
 					if not m:
 						response_text = ""
