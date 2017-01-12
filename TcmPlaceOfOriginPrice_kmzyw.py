@@ -31,7 +31,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'fields': [{
 				'name': 'TcmID',
 				'reference': {
-					'field': '$$TcmName',
+					'field': 'TcmName',
 					'table': 'TB_Resources_TraditionalChineseMedicinalMaterials',
 					'remote_field': 'MedicineName',
 					'remote_id_field': 'ResID',
@@ -39,13 +39,13 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				},
 				'required': True
 			}, {
-				'name': '$$TcmName',
+				'name': 'TcmName',
 				'selector_json': 'drug_name',
 				'required': True
 			}],
 			'res': {
 				'selector_json': 'drug_name',
-				'data_postprocessor': lambda _,meta: 'http://www.kmzyw.com.cn/bzjsp/Biz_price_history/price_history_search.jsp?name=' + urllib.quote(urllib.quote(meta['$$TcmName'].encode('utf-8'))),
+				'data_postprocessor': lambda _,meta: 'http://www.kmzyw.com.cn/bzjsp/Biz_price_history/price_history_search.jsp?name=' + urllib.quote(urllib.quote(meta['TcmName'].encode('utf-8'))),
 				'next_step': 'content'
 			}
 		},
@@ -95,7 +95,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		},
 		"month_price": {
 			'type': "db",
-			'table_name': "TcmPlaceOfOriginPrice",
+			'table_name': "TcmPlaceOfOriginMonthlyPrice",
 			'unique': ['CurrentDate', 'Specification', 'PlaceOfOrigin', 'TcmID'],
 			'upsert': True,
 			'fields': [{
