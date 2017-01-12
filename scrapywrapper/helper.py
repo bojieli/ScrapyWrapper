@@ -48,45 +48,67 @@ class ScrapyHelper():
 	        u'０':0, u'１':1, u'２':2, u'３':3, u'４':4,
 	        u'５':5, u'６':6, u'７':7, u'８':8, u'９':9,
 	        u'0':0, u'1':1, u'2':2, u'3':3, u'4':4,
-	        u'5':5, u'6':6, u'7':7, u'8':8, u'9':9}
+	        u'5':5, u'6':6, u'7':7, u'8':8, u'9':9,
+			u'.':'.', u'-':'-' }
 	
-	def parse_chinese_int(self, chinese_digits, encoding="utf-8"):
-	    if isinstance (chinese_digits, str):
-	        chinese_digits = chinese_digits.decode (encoding)
-	
-	    result  = 0
-	    tmp     = 0
-	    hnd_mln = 0
-	    for count in range(len(chinese_digits)):
-	        curr_char  = chinese_digits[count]
-	        curr_digit = self.chs_arabic_map.get(curr_char, None)
-	        # meet 「亿」 or 「億」
-	        if curr_digit == 10 ** 8:
-	            result  = result + tmp
-	            result  = result * curr_digit
-	            # get result before 「亿」 and store it into hnd_mln
-	            # reset `result`
-	            hnd_mln = hnd_mln * 10 ** 8 + result
-	            result  = 0
-	            tmp     = 0
-	        # meet 「万」 or 「萬」
-	        elif curr_digit == 10 ** 4:
-	            result = result + tmp
-	            result = result * curr_digit
-	            tmp    = 0
-	        # meet 「十」, 「百」, 「千」 or their traditional version
-	        elif curr_digit >= 10:
-	            tmp    = 1 if tmp == 0 else tmp
-	            result = result + curr_digit * tmp
-	            tmp    = 0
-	        # meet single digit
-	        elif curr_digit is not None:
-	            tmp = tmp * 10 + curr_digit
-	        else:
-	            return result
-	    result = result + tmp
-	    result = result + hnd_mln
-	    return result
+	def parse_chinese_int(self, chinese_digits):
+		# skip any non-number chars
+		for count in range(len(chinese_digits)):
+			curr_char  = chinese_digits[count]
+			curr_digit = self.chs_arabic_map.get(curr_char, None)
+			if curr_digit is not None:
+				break
+
+		chinese_digits = chinese_digits[count:]
+		if len(chinese_digits) == 0:
+			return None
+
+		result  = 0
+		tmp     = 0
+		hnd_mln = 0
+		decimal_count = 0
+		minus   = 0
+		for count in range(len(chinese_digits)):
+			curr_char  = chinese_digits[count]
+			curr_digit = self.chs_arabic_map.get(curr_char, None)
+			if curr_digit == '-':
+				minus = 1
+			# meet demical point
+			elif curr_digit == '.':
+				decimal_count = 0
+			# meet 「亿」 or 「億」
+			elif curr_digit == 10 ** 8:
+				result  = result + tmp
+				result  = result * curr_digit / float(10 ** decimal_count)
+				decimal_count = 0
+				# get result before 「亿」 and store it into hnd_mln
+				# reset `result`
+				hnd_mln = hnd_mln * 10 ** 8 + result
+				result  = 0
+				tmp     = 0
+			# meet 「万」 or 「萬」
+			elif curr_digit == 10 ** 4:
+				result = result + tmp
+				result = result * curr_digit / float(10 ** decimal_count)
+				decimal_count = 0
+				tmp    = 0
+			# meet 「十」, 「百」, 「千」 or their traditional version
+			elif curr_digit >= 10:
+				tmp    = 1 if tmp == 0 else tmp
+				result = result + curr_digit / float(10 ** decimal_count) * tmp
+				decimal_count = 0
+				tmp    = 0
+			# meet single digit
+			elif curr_digit is not None:
+				tmp = tmp * 10 + curr_digit
+				decimal_count += 1
+			else:
+				break
+		result = result + tmp / float(10 ** decimal_count)
+		result = result + hnd_mln
+		if minus:
+			result = -result
+		return result
 
 class AttrDict(dict):
 	def __init__(self, *args, **kwargs):
