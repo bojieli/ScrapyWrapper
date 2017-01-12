@@ -274,6 +274,7 @@ class SpiderWrapper(scrapy.Spider):
 
 		try:
 			self._prepare_res_conf(res_conf)
+			# parsers
 			if "parser" in res_conf:
 				if res_conf.parser == 'js-object':
 					m = re.search('var\s+[a-zA-Z0-9_$]+\s*=\s*(.*)', response_text)
@@ -284,7 +285,23 @@ class SpiderWrapper(scrapy.Spider):
 						response_text = m.group(1).strip(';')
 						results = [ response_text ]
 
-			if "selector_matrix" in res_conf:
+			# selectors
+			if "selector_table" in res_conf:
+				doc = lxml.html.fromstring(response_text, parser=utf8_parser)
+				col_keys = [ lxml.etree.tostring(field, method='text', encoding=unicode).strip() for field in doc.xpath('//tr[1]/td')[1:] ]
+				records = [ { "$$key": key } for key in col_keys ]
+				for row in doc.xpath('//tr')[1:]:
+					row_key = lxml.etree.tostring(row.xpath('.//td[1]')[0], method='text', encoding=unicode).strip()
+					col_id = 0
+					for col in row.xpath('.//td')[1:]:
+						try:
+							records[col_id][row_key] = lxml.etree.tostring(col, method='text', encoding=unicode).strip()
+							col_id += 1
+						except: # no such column
+							break
+				results = [ json.dumps(r) for r in records ]
+
+			elif "selector_matrix" in res_conf:
 				doc = lxml.html.fromstring(response_text, parser=utf8_parser)
 				matrix = []
 				for row in doc.xpath('//tr'):
@@ -292,7 +309,7 @@ class SpiderWrapper(scrapy.Spider):
 					for col in row.xpath('.//td|.//th'):
 						if len(matrix) <= col_count:
 							matrix.append([])
-						matrix[col_count].append(lxml.etree.tostring(col, encoding=unicode))
+						matrix[col_count].append(lxml.etree.tostring(col, method='text', encoding=unicode))
 						col_count += 1
 
 				try:
@@ -335,11 +352,23 @@ class SpiderWrapper(scrapy.Spider):
 				results = [] # default empty
 				try:
 					obj = demjson.decode(response_text)
-					levels = res_conf.selector_json.split('.')
 					if type(obj) is list:
 						next_objs = obj
 					else:
 						next_objs = [ obj ]
+
+					# escape '\.'
+					levels = []
+					part = ""
+					for l in res_conf.selector_json.split('.'):
+						if l[-1:] == '\\':
+							part = l[:-1] + '.'
+						else:
+							levels.append(part + l)
+							part = ""
+					if part != "":
+						levels.append(part)
+
 					for l in levels:
 						if l == '':
 							continue
@@ -358,6 +387,7 @@ class SpiderWrapper(scrapy.Spider):
 					results = [ json.dumps(o) for o in next_objs ]
 				except:
 					print('JSON parse failed: ' + response_text.encode('utf-8'))
+
 			else: # plain text
 				results = [ response_text ]
 
@@ -390,7 +420,8 @@ class SpiderWrapper(scrapy.Spider):
 		if 'required' in res_conf and res_conf['required']:
 			if len(results) == 0:
 				print('Record parse error: no results matching selector ' + str(res_conf))
-				print('Full record: ' + response_text.encode('utf-8'))
+				print('Full record: ')
+				print(response_text)
 
 		return results
 
@@ -486,7 +517,19 @@ class SpiderWrapper(scrapy.Spider):
 				try:
 					obj = demjson.decode(result)
 					result = '' # default empty
-					levels = res_conf.selector_json.split('.')
+
+					# escape '\.'
+					levels = []
+					part = ""
+					for l in res_conf.selector_json.split('.'):
+						if l[-1:] == '\\':
+							part = l[:-1] + '.'
+						else:
+							levels.append(part + l)
+							part = ""
+					if part != "":
+						levels.append(part)
+
 					next_objs = [ obj ]
 					for l in levels:
 						if l == '*':
@@ -511,7 +554,8 @@ class SpiderWrapper(scrapy.Spider):
 							result = str(int(o))
 							break
 				except:
-					print('JSON parse failed: ' + result.encode('utf-8'))
+					print('JSON parse failed: ')
+					print(result)
 					result = ''
 					pass
 			else: # plain text
@@ -680,13 +724,29 @@ class SpiderWrapper(scrapy.Spider):
 
 	def _parse_int(self, text):
 		if not text:
-			return 0
+			return None
 		text = text.replace(',', '')
+		parsed = ScrapyHelper().parse_chinese_int(text)
+		if parsed:
+			return int(parsed)
 		try:
 			m = re.search('[0-9-][0-9]*', text.replace(',', ''))
 			return int(m.group(0))
 		except:
-			return ScrapyHelper().parse_chinese_int(text)
+			return None
+
+	def _parse_float(self, text):
+		if not text:
+			return None
+		text = text.replace(',', '')
+		parsed = ScrapyHelper().parse_chinese_int(text)
+		if parsed:
+			return float(parsed)
+		try:
+			m = re.search('[0-9.-][0-9.]*', parsed.replace(',', ''))
+			return float(m.group(0))
+		except:
+			return None
 
 	def _download_images_from_html(self, response_text, meta):
 		if not response_text:
@@ -745,19 +805,16 @@ class SpiderWrapper(scrapy.Spider):
 				if res_conf.data_type == "Date":
 					parsed = self._parse_date(parsed)
 				elif res_conf.data_type == "float":
-					try:
-						m = re.search('[0-9.-][0-9.]*', parsed.replace(',', ''))
-						parsed = str(float(m.group(0)))
-					except:
-						parsed = str(self._parse_int(parsed))
+					parsed = self._parse_float(parsed)
 				elif res_conf.data_type == "int":
-					parsed = str(self._parse_int(parsed))
+					parsed = self._parse_int(parsed)
 				elif res_conf.data_type == "percentage":
 					try:
 						m = re.search('([0-9.-][0-9.]*)%', parsed.replace(',', ''))
-						parsed = str(float(m.group(1)))
+						parsed = float(m.group(1))
 					except:
 						parsed = None
+
 			if type(parsed) is not str and type(parsed) is not unicode and parsed is not None:
 				parsed = str(parsed)
 			if "data_validator" in res_conf and callable(res_conf.data_validator):
@@ -771,8 +828,10 @@ class SpiderWrapper(scrapy.Spider):
 				parsed = self._download_images_from_html(parsed, meta)
 			if "required" in res_conf and res_conf.required:
 				if parsed == None or len(parsed) == 0:
-					print('Record parse error: required field ' + res_conf.name + ' does not exist')
-					print('Full record: ' + result.encode('utf-8'))
+					if not "mute_warnings" in res_conf:
+						print('Record parse error: required field ' + res_conf.name + ' does not exist')
+						print('Full record: ')
+						print(result)
 					return
 			meta[res_conf.name] = parsed
 
@@ -780,7 +839,8 @@ class SpiderWrapper(scrapy.Spider):
 			status = self._parse_reference_field(res_conf, meta)
 			if status == False and "required" in res_conf and res_conf.required:
 				print('Record parse error: required reference field ' + res_conf.name + ' not matched (value "' + meta[res_conf.reference.field] + '")')
-				print('Full record: ' + result)
+				print('Full record: ')
+				print(result)
 				return
 
 		if "postprocessor" in conf and callable(conf.postprocessor):
