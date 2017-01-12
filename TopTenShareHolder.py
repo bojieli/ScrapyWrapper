@@ -21,7 +21,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			},
 			'res': {
 				'selector_xpath': '//*[@id="TTS_Table_Div"]/table[1]/tr',
-				'keep_html_tags': True,
 				'next_step': 'db'
 			},
 			'fields': [{
@@ -31,6 +30,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "TopTenShareHolder",
+			'unique': ['CompanyID', 'ReportDate', 'ShareHolderName'],
+			'upsert': True,
 			'fields': [{
 				'name': 'CompanyID',
 				'reference': {

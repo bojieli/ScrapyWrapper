@@ -52,6 +52,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "PublicCompanyReport",
+			'unique': ['CompanyID', 'PdfUrl'],
+			'upsert': True,
 			'fields': [{
 				'name': 'CompanyID',
 				'reference': {
@@ -76,7 +78,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'required': True
 			}, {
 				'name': 'PdfUrl',
-				'selector_regex': '(http://pdf.dfcfw.com/.*\.pdf)'
+				'selector_regex': '(http://pdf.dfcfw.com/.*\.pdf)',
+				'required': True
 			}]
 		}
 	}

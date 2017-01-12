@@ -31,6 +31,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "PublicCompanyCoreSubject",
+			'unique': ['CompanyID', 'Headline', 'ReportDate'],
+			'upsert': True,
 			'fields': [{
 				'name': 'CompanyID',
 				'reference': {

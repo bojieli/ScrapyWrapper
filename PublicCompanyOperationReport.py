@@ -30,6 +30,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "PublicCompanyOperationReport",
+			'unique': ['CompanyID', 'ReportDate'],
+			'upsert': True,
 			'fields': [{
 				'name': 'CompanyID',
 				'reference': {

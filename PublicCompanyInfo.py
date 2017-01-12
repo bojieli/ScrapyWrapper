@@ -22,7 +22,12 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_css': 'body > div.main',
 				'keep_html_tags': True,
 				'next_step': 'db'
-			}
+			},
+			'fields': [{
+				'name': "StockCode",
+				'selector': lambda url, meta: url,
+				'required': True
+			}]
 		},
 		"db": {
 			'type': "db",
@@ -39,10 +44,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': "PreviousName",
 				'selector_table_sibling': u'曾用名'
-			}, {
-				'name': "StockCode",
-				'selector_table_sibling': u'A股代码',
-				'required': True
 			}, {
 				'name': "StockSymbol",
 				'selector_table_sibling': u'A股简称'
