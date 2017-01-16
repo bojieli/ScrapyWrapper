@@ -423,6 +423,9 @@ class SpiderWrapper(scrapy.Spider):
 				print('Full record: ')
 				print(response_text)
 
+		if 'limit' in res_conf and len(results) > res_conf.limit:
+			results = results[:res_conf.limit]
+
 		return results
 
 	def _mangle_text_results(self, text_results, res_conf, meta):
@@ -558,8 +561,13 @@ class SpiderWrapper(scrapy.Spider):
 					print(result)
 					result = ''
 					pass
-			else: # plain text
-				pass
+
+			else: # original text
+				if "strip_tags" in res_conf:
+					to_strip = res_conf.strip_tags
+				else:
+					to_strip = True
+				result = self._strip_tags(to_strip, result)
 
 			# regex can be after other types of selectors
 			if "selector_regex" in res_conf:
@@ -577,7 +585,9 @@ class SpiderWrapper(scrapy.Spider):
 			print('    while parsing response (' + str(len(result)) + ' bytes)')
 			traceback.print_tb(e[2])
 
-		return result.strip() if result else None
+		if result is not None:
+			result = unicode(result).strip()
+		return result
 
 	def _parse_reference_field(self, res_conf, record):
 		local_field = res_conf.name
@@ -800,7 +810,9 @@ class SpiderWrapper(scrapy.Spider):
 				continue
 			if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
 				result = res_conf.data_preprocessor(result, meta)
+
 			parsed = self._parse_record_field(res_conf, result, meta)
+
 			if "data_type" in res_conf:
 				if res_conf.data_type == "Date":
 					parsed = self._parse_date(parsed)
@@ -831,7 +843,10 @@ class SpiderWrapper(scrapy.Spider):
 					if not "mute_warnings" in res_conf:
 						print('Record parse error: required field ' + res_conf.name + ' does not exist')
 						print('Full record: ')
-						print(result)
+						try:
+							print(result)
+						except:
+							print(result.encode('utf-8'))
 					return
 			meta[res_conf.name] = parsed
 
