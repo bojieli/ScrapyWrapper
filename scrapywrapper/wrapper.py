@@ -55,10 +55,12 @@ class SpiderWrapper(scrapy.Spider):
 						yield params
 			else:
 				raise scrapy.exceptions.CloseSpider('req_conf return value is neither dict, nor iterable')
+			return
 		elif type(req_conf) is list:
 			for item in req_conf:
 				for params in self._gen_http_params(url, item, meta):
 					yield params
+			return
 
 		# default values
 		conf = {
@@ -350,8 +352,19 @@ class SpiderWrapper(scrapy.Spider):
 
 			elif "selector_json" in res_conf:
 				results = [] # default empty
+				obj = None
 				try:
-					obj = demjson.decode(response_text)
+					obj = json.loads(response_text)
+				except:
+					try:
+						obj = demjson.decode(response_text)
+					except:
+						print('JSON parse failed: ')
+						print('----- begin JSON -----')
+						print(response_text)
+						print('----- end JSON -----')
+
+				if obj:
 					if type(obj) is list:
 						next_objs = obj
 					else:
@@ -376,7 +389,14 @@ class SpiderWrapper(scrapy.Spider):
 							next_objs = [ o.values() for o in next_objs ]
 							next_objs = [ item for sublist in next_objs for item in sublist ]
 						else:
-							next_objs = [ o[l] for o in next_objs if l in o ]
+							new_objs = []
+							for o in next_objs:
+								if type(o) is list and l.isdigit() and len(o) > int(l):
+									new_objs.append(o[int(l)])
+								elif type(o) is dict and l in o:
+									new_objs.append(o[l])
+							next_objs = new_objs
+
 						newlist = []
 						for o in next_objs:
 							if type(o) is list:
@@ -384,9 +404,8 @@ class SpiderWrapper(scrapy.Spider):
 							else:
 								newlist.append(o)
 						next_objs = newlist
-					results = [ json.dumps(o) for o in next_objs ]
-				except:
-					print('JSON parse failed: ' + response_text.encode('utf-8'))
+					results = [ json.dumps(o).strip('"') for o in next_objs ]
+			# end selector json
 
 			else: # plain text
 				results = [ response_text ]
@@ -454,13 +473,19 @@ class SpiderWrapper(scrapy.Spider):
 		meta['$$new_session'] = res_conf['new_session'] if 'new_session' in res_conf else False
 		if 'cookiejar' in response.meta and not meta['$$new_session']:
 			meta['$$session_id'] = response.meta['cookiejar']
+
+		body = None
 		try:
 			if response.meta['$$encoding']:
 				body = response.body.decode(response.meta['$$encoding']).encode('utf-8')
-			else:
-				body = response.body_as_unicode()
 		except:
-			body = response.body_as_unicode()
+			pass
+
+		if body is None:
+			try:
+				body = response.body_as_unicode()
+			except:
+				body = response.body
 
 		if '$$http_debug' in response.meta and response.meta['$$http_debug']:
 			print('----------------')
@@ -517,9 +542,24 @@ class SpiderWrapper(scrapy.Spider):
 						result = self._strip_tags(to_strip, unicode(matches[0]))
 
 			elif "selector_json" in res_conf:
+				obj = None
 				try:
-					obj = demjson.decode(result)
-					result = '' # default empty
+					obj = json.loads(result)
+				except:
+					try:
+						obj = demjson.decode(result)
+					except:
+						print('JSON parse failed: ')
+						print('----- begin JSON -----')
+						print(result)
+						print('----- end JSON -----')
+						result = '' # default empty
+
+				if obj:
+					if type(obj) is list:
+						next_objs = obj
+					else:
+						next_objs = [ obj ]
 
 					# escape '\.'
 					levels = []
@@ -533,19 +573,29 @@ class SpiderWrapper(scrapy.Spider):
 					if part != "":
 						levels.append(part)
 
-					next_objs = [ obj ]
 					for l in levels:
-						if l == '*':
+						if l == '':
+							continue
+						elif l == '*':
 							next_objs = [ o.values() for o in next_objs ]
 							next_objs = [ item for sublist in next_objs for item in sublist ]
 						else:
 							new_objs = []
 							for o in next_objs:
-								if type(o) is list and len(o) > int(l):
+								if type(o) is list and l.isdigit() and len(o) > int(l):
 									new_objs.append(o[int(l)])
 								elif type(o) is dict and l in o:
 									new_objs.append(o[l])
 							next_objs = new_objs
+
+						newlist = []
+						for o in next_objs:
+							if type(o) is list:
+								newlist.extend(o)
+							else:
+								newlist.append(o)
+						next_objs = newlist
+
 					for o in next_objs:
 						if type(o) is str or type(o) is unicode:
 							result = o
@@ -556,18 +606,10 @@ class SpiderWrapper(scrapy.Spider):
 						elif type(o) is bool:
 							result = str(int(o))
 							break
-				except:
-					print('JSON parse failed: ')
-					print(result)
-					result = ''
-					pass
+			# end selector json
 
 			else: # original text
-				if "strip_tags" in res_conf:
-					to_strip = res_conf.strip_tags
-				else:
-					to_strip = True
-				result = self._strip_tags(to_strip, result)
+				pass
 
 			# regex can be after other types of selectors
 			if "selector_regex" in res_conf:
@@ -576,6 +618,12 @@ class SpiderWrapper(scrapy.Spider):
 					result = m.group(1)
 				else:
 					result = ''
+
+			if "strip_tags" in res_conf:
+				to_strip = res_conf.strip_tags
+			else:
+				to_strip = True
+			result = self._strip_tags(to_strip, result)
 
 			if "selector" in res_conf and callable(res_conf.selector):
 				result = res_conf.selector(result, meta)
@@ -694,34 +742,34 @@ class SpiderWrapper(scrapy.Spider):
 		if not text:
 			return None
 		text = text.replace(' ', '')
-		m = re.search(u'^([0-9]{4})年([0-9]{1,2})月([0-9]{1,2})日$', text)
+		m = re.search(u'^([0-9]{4})年([0-9]{1,2})月([0-9]{1,2})日', text)
 		if m:
 			return self._make_date_string(m.group(1), m.group(2), m.group(3))
-		m = re.search('^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})$', text)
+		m = re.search('^([0-9]{4})-([0-9]{1,2})-([0-9]{1,2})', text)
 		if m:
 			return self._make_date_string(m.group(1), m.group(2), m.group(3))
-		m = re.search('^([0-9]{2})-([0-9]{1,2})-([0-9]{1,2})$', text)
+		m = re.search('^([0-9]{2})-([0-9]{1,2})-([0-9]{1,2})', text)
 		if m:
 			if int(m.group(1)) >= '70': # 1970 - 1999
 				return self._make_date_string('19' + m.group(1), m.group(2), m.group(3))
 			else: # >= 2000
 				return self._make_date_string('20' + m.group(1), m.group(2), m.group(3))
-		m = re.search('^([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})$', text)
+		m = re.search('^([0-9]{4})/([0-9]{1,2})/([0-9]{1,2})', text)
 		if m:
 			return self._make_date_string(m.group(1), m.group(2), m.group(3))
-		m = re.search('^([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})$', text)
+		m = re.search('^([0-9]{1,2})/([0-9]{1,2})/([0-9]{4})', text)
 		if m:
 			return self._make_date_string(m.group(3), m.group(1), m.group(2))
-		m = re.search('^([0-9]{1,2})/([0-9]{1,2})/([0-9]{2})$', text)
+		m = re.search('^([0-9]{1,2})/([0-9]{1,2})/([0-9]{2})', text)
 		if m:
 			if int(m.group(1)) >= '70': # 1970 - 1999
 				return self._make_date_string('19' + m.group(3), m.group(1), m.group(2))
 			else: # >= 2000
 				return self._make_date_string('20' + m.group(3), m.group(1), m.group(2))
-		m = re.search(u'^([0-9]{4})年([0-9]{1,2})月$', text)
+		m = re.search(u'^([0-9]{4})年([0-9]{1,2})月', text)
 		if m:
 			return self._make_date_string(m.group(1), m.group(2), 1)
-		m = re.search(u'^([0-9]{4})年$', text)
+		m = re.search(u'^([0-9]{4})年', text)
 		if m:
 			return self._make_date_string(m.group(1), 1, 1)
 		m = re.search(u'^([0-9]{4})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})([0-9]{2})', text)
