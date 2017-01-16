@@ -86,42 +86,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'name': 'IncreaseFromLastYear',
 				'value': None
 			}]
-		},
-		"TcmPlaceOfOriginPrice": {
-			'type': "db",
-			'table_name': "TcmPlaceOfOriginPrice",
-			'unique': ['TcmID', 'Specification', 'PlaceOfOrigin', 'CurrentDate'],
-			'upsert': True,
-			'fields': [{
-				'name': 'PlaceOfOrigin',
-				'selector_xpath': '//td[2]',
-				'required': True
-			}, {
-				'name': 'Specification',
-				'selector_xpath': '//td[1]',
-				'required': True
-			}, {
-				'name': 'CurrentDate',
-				'value': datetime.datetime.today().strftime('%Y-%m-%d')
-			}, {
-				'name': 'Price',
-				'selector_xpath': '//td[3]',
-				'data_type': 'float',
-				'required': True
-			}, {
-				'name': 'IncreaseFromLastWeek',
-				'selector_xpath': '//td[4]',
-				'data_type': 'float'
-			}, {
-				'name': 'IncreaseFromLastMonth',
-				'value': None,
-			}, {
-				'name': 'IncreaseFromLastYear',
-				'value': None
-			}, {
-				'name': 'CurrentTrend',
-				'selector_xpath': '//td[5]'
-			}]
 		}
 	}
 

@@ -79,6 +79,9 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_xpath': '//p',
 				'selector_regex': u'产地：(.*)',
 				'required': True
+			}, {
+				'name': "PlaceOfOriginID",
+				'reference': { 'field': 'PlaceOfOrigin', 'table': 'TB_Addresses', 'remote_field': 'Name', 'remote_id_field': 'PID', 'match': 'lpm' }
 			}]
 		},
 		"year_price": {
