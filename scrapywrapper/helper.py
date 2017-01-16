@@ -49,7 +49,8 @@ class ScrapyHelper():
 	        u'５':5, u'６':6, u'７':7, u'８':8, u'９':9,
 	        u'0':0, u'1':1, u'2':2, u'3':3, u'4':4,
 	        u'5':5, u'6':6, u'7':7, u'8':8, u'9':9,
-			u'.':'.', u'-':'-' }
+			u'.':'.', u'-':'-',
+			u' ':' ', u'\t':' ' }
 	
 	def parse_chinese_int(self, chinese_digits):
 		# skip any non-number chars
@@ -71,7 +72,9 @@ class ScrapyHelper():
 		for count in range(len(chinese_digits)):
 			curr_char  = chinese_digits[count]
 			curr_digit = self.chs_arabic_map.get(curr_char, None)
-			if curr_digit == '-':
+			if curr_digit == ' ':
+				continue
+			elif curr_digit == '-':
 				minus = 1
 			# meet demical point
 			elif curr_digit == '.':
