@@ -56,9 +56,12 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "JapanMedicalProductInfo",
+			'unique': ['JapaneseGenericName', 'JapaneseRetailName', 'CompanyName'],
+			'upsert': True,
 			'fields': [{
 				'name': 'JapaneseGenericName',
-				'selector_xpath': '//td[1]'
+				'selector_xpath': '//td[1]',
+				'required': True
 			}, {
 				'name': 'JapaneseRetailName',
 				'selector_xpath': '//th',

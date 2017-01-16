@@ -80,6 +80,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "PatentCategoryNumber",
+			'unique': ['ApplicationID'],
+			'upsert': True,
 			'fields': [{
 				'name': 'PatentName',
 				'selector_xpath': '//td[@style = "font-size:18px;font-weight:bold;text-align:center;"]',
@@ -101,7 +103,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'data_type': 'Date'
 			}, {
 				'selector_table_sibling_contains': u'申请号',
-				'name': 'ApplicationID'
+				'name': 'ApplicationID',
+				'required': True
 			}, {
 				'selector_table_sibling_contains': u'公开号',
 				'name': 'PublicationID'
@@ -109,8 +112,12 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_table_sibling_contains': u'地址',
 				'name': 'CurrentAddress'
 			}, {
+				'selector_table_sibling_contains': u'地址',
+				'name': '$$Address',
+				'data_postprocessor': lambda d,_: d.lstrip('0123456789 ')
+			}, {
 				'name': 'RegionID',
-				'reference': { 'field': 'RegionID', 'table': 'TB_Addresses', 'remote_field': 'Name', 'remote_id_field': 'PID', 'match': 'lpm' }
+				'reference': { 'field': '$$Address', 'table': 'TB_Addresses', 'remote_field': 'Name', 'remote_id_field': 'PID', 'match': 'lpm' }
 			}, {
 				'selector_table_sibling_contains': u'国省代码',
 				'name': 'CountryProvinceID'

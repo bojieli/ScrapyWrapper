@@ -34,15 +34,11 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "HospitalList",
+			'unique': ['HospitalName'],
+			'upsert': True,
 			'fields': [{
 				'name': "RegionID",
-				'reference': {
-					'field': "HospitalName",
-					'table': "TB_Resources_MedicineProductionUnit",
-					'remote_field': "CompanyName",
-					'remote_id_field': "ResID",
-					'match': 'lpm'
-				}
+				'reference': { 'field': 'HospitalName', 'table': 'TB_Addresses', 'remote_field': 'Name', 'remote_id_field': 'PID', 'match': 'lpm' }
 			}, {
 				'name': "HospitalName",
 				'selector_table_sibling': u'医院名称：',

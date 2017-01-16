@@ -7,7 +7,9 @@ import json
 import urllib2
 req = urllib2.Request('http://map.kmzyw.com.cn/data/get_map_quanguo.jsp', None, {'User-Agent' : 'Mozilla/5.0'})
 json_obj = json.loads(urllib2.urlopen(req).read())
-province_list = [ o['Province'] for o in json_obj['msg'] ]
+def sanitize(p):
+	return p.rstrip(u'省').rstrip(u'市')
+province_list = [ sanitize(o['Province']) for o in json_obj['msg'] ]
 if len(province_list) == 0:
 	raise 'Error loading province list'
 print(province_list)
@@ -34,13 +36,16 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "PlantingBase",
+			'unique': ['TcmName', 'PlantingBaseName'],
+			'upsert': True,
 			'fields': [{
 				'name': "TcmID",
 				'reference': {
 					'field': 'TcmName',
 					'table': 'TB_Resources_TraditionalChineseMedicinalMaterials',
 					'remote_field': 'MedicineName',
-					'remote_id_field': 'ResID'
+					'remote_id_field': 'ResID',
+					'insert_if_not_exist': True
 				}
 			}, {
 				'name': "TcmName",

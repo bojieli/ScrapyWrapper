@@ -2,6 +2,7 @@
 # -*- coding:utf-8 -*-
 from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
+import re
 
 class ScrapyConfig(ScrapyWrapperConfig):
 	begin_urls = ["http://www.biomart.cn/supply/10030119.htm"]
@@ -32,47 +33,48 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			"fields": [{
 				'name': 'ChineseName',
 				'selector_css': 'div.product_attr h1',
-				'selector_regex': '([^A-Za-z]*)'
+				'data_postprocessor': lambda d,_: re.sub(r'[a-zA-Z0-9\s_-]*$', '', re.sub(r'^[a-zA-Z0-9\s]*', '', d))
 			}, {
-				'name': 'EnglishName',
+				'name': '$$Name',
 				'selector_css': 'div.product_attr h1',
-				'selector_regex': '[^A-Za-z]*(.*)'
-			}, {
-				'name': "CompanyName",
-				'selector_css': 'li.m-pro-info-l a'
-			}, {
-				'name': 'ContactPerson',
-				'selector_css': 'dl.par_top',
-				'selector_regex': '联系人：([^<]*)',
 				'required': True
 			}, {
+				'name': 'EnglishName',
+				'selector_xpath': u'//li[@title="英&nbsp;&nbsp;文&nbsp;&nbsp;名："]/text()',
+				'selector': lambda x,meta: x if x else re.sub(r'[^a-zA-Z0-9\s_-]', '', meta['$$Name'])
+			}, {
+				'name': "CompanyName",
+				'selector_css': 'li.m-pro-info-l a',
+				'required': True
+			}, {
+				'name': 'ContactPerson',
+				'selector_xpath': u'//dl[@class="par_top"]//span[text()="联系人："]/parent::p/text()',
+			}, {
 				'name': 'TelephoneNumber',
-				'selector_css': 'dl.par_top',
-				'selector_regex': '电话：([^<]*)'
+				'selector_xpath': u'//dl[@class="par_top"]//span[text()="电话："]/parent::p/text()',
 			}, {
 				'name': 'EmailAddress',
-				'selector_css': 'dl.par_top',
-				'selector_regex': '邮件：([^<]*)'
+				'selector_xpath': u'//dl[@class="par_top"]//span[text()="邮件："]/parent::p/text()',
 			}, {
 				'name': 'CellphoneNumber',
-				'selector_css': 'dl.par_top',
-				'selector_regex': '手机：([^<]*)'
+				'selector_xpath': u'//dl[@class="par_top"]//span[text()="手机："]/parent::p/text()',
 			}, {
 				'name': 'CurrentAddress',
-				'selector_css': 'dl.par_top',
-				'selector_regex': '地址：([^<]*)'
+				'selector_xpath': u'//dl[@class="par_top"]//span[text()="地址："]/parent::p/text()',
 			}, {
 				'name': 'MerchantCredibilityScore',
-				'selector_xpath': '//dd[@class="star"]/a/span/@class',
+				'selector_xpath': '//dd[@id="js_par_star"]/a/span/@class',
 				'data_type': 'int'
 			}, {
-				'selector_xpath': '//*[@id="j_product_info"]/ul/li[3]/text()',
 				'name': 'PlaceOfOrigin',
+				'selector_xpath': u'//li[@title="产　　地："]/text()',
 			}]
 		},
 		"db": {
 			'type': "db",
 			'table_name': "ExtractInfo",
+			'unique': ['ChineseName', 'ProductID', 'CompanyName'],
+			'upsert': True,
 			'fields': [{
 				'name': "DetailedInfo",
 				'selector_css': '#_info_desc',

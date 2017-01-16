@@ -40,7 +40,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		return base64.encodestring(enc_s).strip()
 
 	def url_gen(self):
-		for url_id in range(1, 1000):
+		for url_id in range(300, 600):
 			yield 'http://db.yaozh.com/fangji/' + self.encode_url_id(url_id) + '.html'
 
 	begin_urls = url_gen
@@ -48,11 +48,13 @@ class ScrapyConfig(ScrapyWrapperConfig):
 	steps = {
 		"begin": {
 			'req': {
-				'cookies': 'MEIQIA_EXTRA_TRACK_ID=a6452976bc9311e6b96b02fa39e25136; ad_download=1; gr_user_id=a1c068f7-5995-45af-87ec-a7ff262d7430; UtzD_f52b_saltkey=MHv6JB86; UtzD_f52b_lastvisit=1481841298; pgv_pvi=1900213552; PHPSESSID=j3ue0tvbq6pmp9gqpdjnmbfja5; _user_=j3ue0tvbq6pmp9gqpdjnmbfja5; _ga=GA1.2.1255801030.1481121571; yaozh_logintime=1483410886; yaozh_user=424196%09bojieli; db_w_auth=405916%09bojieli; UtzD_f52b_lastact=1483410887%09uc.php%09; UtzD_f52b_auth=d7cbP8cD%2B6ihCMkhTNaUfyi9%2FjNynEAd9DjVfpY5%2FcVoE0ILRfERb4YjrsSkoUtoLaf2fgEcAcZd0lcEHzDLjJF6u3E; think_language=en-US; _gat=1; _ga=GA1.3.1255801030.1481121571; Hm_lvt_65968db3ac154c3089d7f9a4cbb98c94=1481976864,1481977306,1482749665,1482959253; Hm_lpvt_65968db3ac154c3089d7f9a4cbb98c94=1483415690'
+				'cookies': 'MEIQIA_EXTRA_TRACK_ID=a6452976bc9311e6b96b02fa39e25136; gr_user_id=a1c068f7-5995-45af-87ec-a7ff262d7430; pgv_pvi=1900213552; PHPSESSID=2rquhbdd6rk3m255sjabcuulj0; _user_=2rquhbdd6rk3m255sjabcuulj0; think_language=en-US; _gat=1; ad_index_dialog=1; _ga=GA1.2.1255801030.1481121571; yaozh_logintime=1484527746; yaozh_user=424196%09bojieli; _ga=GA1.3.1255801030.1481121571; Hm_lvt_65968db3ac154c3089d7f9a4cbb98c94=1482749665,1482959253,1483892989,1484527717; Hm_lpvt_65968db3ac154c3089d7f9a4cbb98c94=1484527736',
+				'dont_filter': True
 			},
 			'res': [{
 				'selector_css': '.main table.table',
-				'next_step': 'content'
+				'next_step': 'content',
+				'required': True
 			}, {
 				'selector_regex': u'(暂无权限)',
 				'data_postprocessor': lambda _,meta: meta['$$url'],
@@ -66,6 +68,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"content": {
 			'type': "db",
 			'table_name': "TcmFormula",
+			'unique': ['FormulaName'],
+			'upsert': True,
 			'fields': [{
 				'selector_table_sibling': u'方名',	'name': "FormulaName",
 				'data_validator': lambda d,_: d != u'暂无权限',
@@ -95,7 +99,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}],
 			'res': {
 				'selector_table_sibling': u'组成',
-				'selector': lambda text, meta: text.split(' '),
+				'selector': lambda text, meta: text.split(),
 				'strip_tags': True,
 				'next_step': 'ingredient'
 			}
@@ -103,6 +107,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"ingredient": {
 			'type': 'db',
 			'table_name': 'TcmFormulaIngredient',
+			'unique': ['TcmFormulaID', 'TcmName'],
+			'upsert': True,
 			'fields': [{
 				'name': '$$dummy',
 				'selector': lambda _,meta: remove_unknown_fields(meta)
@@ -111,7 +117,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector': lambda _,meta: meta['$$info_id']
 			}, {
 				'name': 'TcmName',
-				'selector': lambda t,_: t.split('（')[0],
+				'selector': lambda t,_: t.split(u'（')[0],
 				'required': True
 			}, {
 				'name': 'TcmContent',
@@ -120,7 +126,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': 'TcmID',
 				'reference': {
-					'field': 'TcmContent',
+					'field': 'TcmName',
 					'table': 'TB_Resources_TraditionalChineseMedicinalMaterials',
 					'remote_field': 'MedicineName',
 					'remote_id_field': 'ResID',

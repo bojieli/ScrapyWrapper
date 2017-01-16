@@ -42,7 +42,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'required': True
 			}, {
 				'name': "ShareHolderName",
-				'selector_xpath': '//td[1]'
+				'selector_xpath': '//td[1]',
+				'required': True
 			}, {
 				'name': "ShareType",
 				'selector_xpath': '//td[2]'

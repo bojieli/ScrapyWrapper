@@ -42,12 +42,15 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			{
 				'selector_href_text': u'下一页',
 				'data_validator': is_page_higher_than_curr,
-				'next_step': 'content'
+				'next_step': 'content',
+				'limit': 1
 			}]
 		},
 		"db": {
 			'type': "db",
 			'table_name': "TcmSeedResource",
+			'unique': ['PlatformResNumber'],
+			'upsert': True,
 			'fields': [
 { 'name': "TcmSeedName", 'selector_table_sibling': u"种质名称", 'required': True },
 { 'name': "TcmID", 'reference': {'field': 'TcmSeedName', 'table': 'TB_Resources_TraditionalChineseMedicinalMaterials', 'remote_field': 'MedicineName', 'remote_id_field': 'ResID', 'insert_if_not_exist': True } },
