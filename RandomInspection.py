@@ -27,6 +27,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "RandomInspection",
+			'unique': ['PublicationDate', 'Headline'],
+			'upsert': True,
 			'fields': [{
 				'name': "DrugManufacturerID",
 				'reference': {
@@ -37,12 +39,19 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				}
 			}, {
 				'name': "PublicationDate",
-				'selector_table_sibling': u'发布日期',
-				'data_type': "Date"
+				'selector_css': 'td.articletddate3',
+				'selector_regex': u'([0-9]*年[0-9]*月[0-9]*日)',
+				'data_type': "Date",
+				'required': True
 			}, {
 				'name': "Headline",
 				'selector_css': 'td.articletitle3',
 				'required': True
+			}, {
+				'name': "DetailContent",
+				'selector_css': 'td.articlecontent3',
+				'strip_tags': False,
+				'download_images': True
 			}, {
 				'name': "CompanyName",
 				'selector_table_sibling': u'企业名称',
