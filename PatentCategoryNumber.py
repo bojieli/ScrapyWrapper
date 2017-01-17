@@ -41,6 +41,8 @@ def gen_req(url, meta):
 		yield req_conf 
 
 class ScrapyConfig(ScrapyWrapperConfig):
+	crawlera_enabled = True
+
 	begin_urls = ["http://dbpub.cnki.net/Grid2008/Dbpub/Brief.aspx?ID=SCPD&subBase=all"]
 
 	steps = {

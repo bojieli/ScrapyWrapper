@@ -33,14 +33,14 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'fields': [{
 				'name': 'TcmID',
 				'reference': {
-					'field': '$$TcmName',
+					'field': 'TcmName',
 					'table': 'TB_Resources_TraditionalChineseMedicinalMaterials',
 					'remote_field': 'MedicineName',
 					'remote_id_field': 'ResID',
 					'insert_if_not_exist': True
 				},
 			}, {
-				'name': '$$TcmName',
+				'name': 'TcmName',
 				'selector_json': 'MName',
 				'required': True
 			}, {
