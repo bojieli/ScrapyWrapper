@@ -440,7 +440,7 @@ class SpiderWrapper(scrapy.Spider):
 			if len(results) == 0:
 				print('Record parse error: no results matching selector ' + str(res_conf))
 				print('Full record: ')
-				print(response_text)
+				print(repr(response_text)[:1000])
 
 		if 'limit' in res_conf and len(results) > res_conf.limit:
 			results = results[:res_conf.limit]
@@ -892,9 +892,9 @@ class SpiderWrapper(scrapy.Spider):
 						print('Record parse error: required field ' + res_conf.name + ' does not exist')
 						print('Full record: ')
 						try:
-							print(result)
+							print(repr(result)[:1000])
 						except:
-							print(result.encode('utf-8'))
+							print(result.encode('utf-8')[:1000])
 					return
 			meta[res_conf.name] = parsed
 
@@ -903,7 +903,7 @@ class SpiderWrapper(scrapy.Spider):
 			if status == False and "required" in res_conf and res_conf.required:
 				print('Record parse error: required reference field ' + res_conf.name + ' not matched (value "' + meta[res_conf.reference.field] + '")')
 				print('Full record: ')
-				print(result)
+				print(repr(result)[:1000])
 				return
 
 		if "postprocessor" in conf and callable(conf.postprocessor):
