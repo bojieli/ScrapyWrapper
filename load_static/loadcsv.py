@@ -1,6 +1,7 @@
 #coding=utf8
 import pymssql
 import sys
+import csv
 
 server = "114.215.255.52"
 user = "AddDataUser"
@@ -18,12 +19,7 @@ value_types = ['NEWID()']
 table_data = []
 first_line = True
 count = 0
-for line in f:
-	values = []
-	for x in line.split('"')[1:-1]:
-		x = x.strip()
-		if x != ',':
-			values.append(x)
+for values in csv.reader(f):
 	if first_line:
 		first_line = False
 		if "ID" in values:
