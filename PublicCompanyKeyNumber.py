@@ -22,7 +22,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			},
 			'res': {
 				'selector_regex': "SwitchZYZB\('([0-9]*)'",
-				'keep_html_tags': False,
+				'strip_tags': True,
 				'next_step': 'table'
 			},
 			'fields': [{
@@ -53,52 +53,52 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'required': True
 			}, {
 				'name': "ReportDate",
-				'selector_xpath': '//th',
+				'selector_xpath': '//td[1]',
 				'data_type': 'Date',
 				'required': True
 			}, {
 				'name': 'BasicEarningPerShare',
-				'selector_xpath': '//td[1]',
-				'data_type': 'float'
-			}, {
-				'name': 'EarningDeductionPerShare',
 				'selector_xpath': '//td[2]',
 				'data_type': 'float'
 			}, {
-				'name': 'DilutedEarningPerShare',
+				'name': 'EarningDeductionPerShare',
 				'selector_xpath': '//td[3]',
 				'data_type': 'float'
 			}, {
-				'name': 'NetEarningPerShare',
+				'name': 'DilutedEarningPerShare',
 				'selector_xpath': '//td[4]',
 				'data_type': 'float'
 			}, {
-				'name': 'NetEarningPerShareChange',
+				'name': 'NetEarningPerShare',
 				'selector_xpath': '//td[5]',
 				'data_type': 'float'
 			}, {
-				'name': 'NetEarningPerShareMat',
+				'name': 'NetEarningPerShareChange',
 				'selector_xpath': '//td[6]',
 				'data_type': 'float'
 			}, {
-				'name': 'WeightedReturnOnEquity',
+				'name': 'NetEarningPerShareMat',
 				'selector_xpath': '//td[7]',
 				'data_type': 'float'
 			}, {
-				'name': 'DilutedReturnOnEquity',
+				'name': 'WeightedReturnOnEquity',
 				'selector_xpath': '//td[8]',
 				'data_type': 'float'
 			}, {
-				'name': 'GrossProfitRate',
+				'name': 'DilutedReturnOnEquity',
 				'selector_xpath': '//td[9]',
 				'data_type': 'float'
 			}, {
-				'name': 'ActualTaxRate',
+				'name': 'GrossProfitRate',
 				'selector_xpath': '//td[10]',
 				'data_type': 'float'
 			}, {
-				'name': 'EstimatedOperatingIncome',
+				'name': 'ActualTaxRate',
 				'selector_xpath': '//td[11]',
+				'data_type': 'float'
+			}, {
+				'name': 'EstimatedOperatingIncome',
+				'selector_xpath': '//td[12]',
 				'data_type': 'float'
 			}
 			]
