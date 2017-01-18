@@ -218,9 +218,11 @@ class SpiderWrapper(scrapy.Spider):
 		if to_strip:
 			convertor = html2text.HTML2Text()
 			convertor.ignore_links = True
-			return convertor.handle(text).strip()
-		else:
-			return text.strip()
+			try:
+				text = convertor.handle(text)
+			except:
+				pass
+		return text.replace("\\n", "\n").strip()
 
 	def _prepare_res_conf(self, res_conf):
 		if "selector_css" in res_conf:
@@ -301,7 +303,7 @@ class SpiderWrapper(scrapy.Spider):
 							col_id += 1
 						except: # no such column
 							break
-				results = [ json.dumps(r) for r in records ]
+				results = [ json.dumps(r, ensure_ascii=False) for r in records ]
 
 			elif "selector_matrix" in res_conf:
 				doc = lxml.html.fromstring(response_text, parser=utf8_parser)
@@ -404,7 +406,7 @@ class SpiderWrapper(scrapy.Spider):
 							else:
 								newlist.append(o)
 						next_objs = newlist
-					results = [ json.dumps(o).strip('"') for o in next_objs ]
+					results = [ json.dumps(o, ensure_ascii=False).strip('"') for o in next_objs ]
 			# end selector json
 
 			else: # plain text
@@ -634,7 +636,9 @@ class SpiderWrapper(scrapy.Spider):
 			traceback.print_tb(e[2])
 
 		if result is not None:
-			result = unicode(result).strip()
+			if type(result) is not unicode:
+				result = result.decode('utf-8', 'ignore')
+			result = result.strip()
 		return result
 
 	def _parse_reference_field(self, res_conf, record):
