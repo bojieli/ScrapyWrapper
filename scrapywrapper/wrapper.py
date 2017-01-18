@@ -321,7 +321,7 @@ class SpiderWrapper(scrapy.Spider):
 						matrix = matrix[1:]
 				except:
 					pass
-				return [ ' '.join(col) for col in matrix ]
+				return [ ''.join([ '<td>' + x + '</td>' for x in col ]) for col in matrix ]
 
 			elif "selector_xpath" in res_conf:
 				#if "keep_entities" in res_conf and res.keep_entities:
