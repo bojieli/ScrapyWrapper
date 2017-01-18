@@ -33,6 +33,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "WeatherDisasterForecast",
+			'unique': ['PublicationDate', 'Region', 'DisasterForecastType'],
+			'upsert': True,
 			'fields': [{
 				'name': "PublicationDate",
 				'selector_json': '1',

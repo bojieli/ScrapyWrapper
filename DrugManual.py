@@ -28,6 +28,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "DrugManual",
+			'unique': ['DrugName', 'Manufacturer'],
+			'upsert': True,
 			'fields': [
 			{
 				'name': "DrugID",

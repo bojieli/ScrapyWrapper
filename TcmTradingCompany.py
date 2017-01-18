@@ -159,6 +159,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"tab3": {
 			'type': "db",
 			'table_name': "TcmTradingCompany",
+			'unique': ['CompanyName'],
+			'upsert': True,
 			'fields': [{
 				'selector_table_sibling': u'联系人 :',
 				'name': 'ContactPerson'

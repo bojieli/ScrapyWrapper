@@ -33,6 +33,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "DrugConsistencyEvaluation",
+			'unique': ['PublicationDate', 'Headline'],
+			'upsert': True,
 			'fields': [{
 				'name': "PublicationDate",
 				'selector_css': 'td.articletddate3',

@@ -24,6 +24,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "HistoricalWeatherDisaster",
+			'unique': ['PublicationDate', 'Region', 'DisasterType'],
+			'upsert': True,
 			'fields': [{
 				'name': "PublicationDate",
 				'selector_json': 'Time'

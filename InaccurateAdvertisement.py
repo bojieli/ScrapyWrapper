@@ -28,6 +28,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "InaccurateAdvertisement",
+			'unique': ['ProductName', 'CFDAAnnouncementDate'],
+			'upsert': True,
 			'fields': [
 			{
 				'name': "DrugManufacturerID",

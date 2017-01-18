@@ -24,6 +24,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "EUMedicalProductInfo",
+			'unique': ['ProductID'],
+			'upsert': True,
 			'fields': [
 {'selector_table_sibling': u'产品编号'		, 'name': "ProductID"},
 {'selector_table_sibling': u'商标名'		, 'name': "EURetailName", 'required': True},

@@ -52,6 +52,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "InfectiousDiseaseInfo",
+			'unique': ['PublicationDate', 'Headline'],
+			'upsert': True,
 			'fields': [{
 				'name': "PublicationDate",
 				'selector_css': 'div.content_subtitle',
@@ -75,6 +77,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db_subtable": {
 			'type': "db",
 			'table_name': 'InfectiousDiseaseStatistic',
+			'unique': ['DiseaseID', 'DiseaseName'],
+			'upsert': True,
 			'fields': [{
 				'name': 'DiseaseID',
 				'selector': lambda _,meta: meta['$$info_id'],

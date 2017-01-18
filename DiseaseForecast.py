@@ -37,6 +37,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "DiseaseForecast",
+			'unique': ['PublicationDate', 'Headline'],
+			'upsert': True,
 			'fields': [{
 				'name': "PublicationDate",
 				'selector_css': 'div.xj2',

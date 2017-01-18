@@ -87,8 +87,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "PublicAgencyProfitForecast",
-			#'unique': ['CompanyID', 'PublicationDate', 'AgencyName', 'ForecastYear', 'ForecastType'],
-			#'upsert': True,
+			'unique': ['CompanyID', 'PublicationDate', 'AgencyName', 'ForecastYear', 'ForecastType'],
+			'upsert': True,
 			'fields': [{
 				'name': 'ForecastYear',
 				'selector': lambda _, meta: meta['$$record_count'] + 2015,

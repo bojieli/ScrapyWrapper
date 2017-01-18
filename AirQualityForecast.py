@@ -36,6 +36,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		},
 		"db": {
 			'type': "db",
+			'unique': ['PublicationDate', 'ForecastDate', 'Region'],
+			'upsert': False,
 			'table_name': "AirQualityForecast",
 			'fields': [{
 				'name': "PublicationDate",

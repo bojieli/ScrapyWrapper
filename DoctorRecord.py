@@ -25,6 +25,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "DoctorRecord",
+			'unique': ['DoctorName', 'PracticeLocation', 'DoctorGender'],
+			'upsert': True,
 			'fields': [
 			{
 				'name': "DoctorName",

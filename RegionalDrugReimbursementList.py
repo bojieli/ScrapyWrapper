@@ -43,7 +43,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': 'Region',
 				'selector_css': '#yibaomulu-content h1',
-				'selector_regex': '# (.{3})',
+				'selector_regex': '(.{3})',
 				'required': True
 			}],
 			'res': {
@@ -54,6 +54,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "RegionalDrugReimbursementList",
+			'unique': ['Classification', 'DrugName', 'Region', 'DosageType'],
+			'upsert': True,
 			'fields': [{
 				'name': "DrugClassification",
 				'selector_xpath': '//td[1]',

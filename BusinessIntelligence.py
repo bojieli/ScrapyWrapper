@@ -30,6 +30,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		},
 		"db": {
 			'type': "db",
+			'unique': ['PublicationDate', 'Headline'],
+			'upsert': True,
 			'table_name': "BusinessIntelligence",
 			'fields': [{
 				'name': "PublicationDate",

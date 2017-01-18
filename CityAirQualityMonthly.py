@@ -51,6 +51,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		},
 		"db": {
 			'type': "db",
+			'unique': ['PublicationDate', 'Headline'],
+			'upsert': True,
 			'table_name': "CityAirQualityMonthly",
 			'fields': [{
 				'name': 'DetailContent',
@@ -68,6 +70,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		},
 		'db_pdf': {
 			'type': 'db',
+			'unique': ['PublicationDate', 'Headline'],
+			'upsert': True,
 			'table_name': "CityAirQualityMonthly",
 			'fields': [{
 				'name': 'DetailContent',

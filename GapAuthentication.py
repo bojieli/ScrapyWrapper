@@ -27,6 +27,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "GapAuthentication",
+			'unique': ['PublicationDate', 'Headline'],
+			'upsert': True,
 			'fields': [{
 				'name': "PublicationDate",
 				'selector_css': 'td.articletddate3',

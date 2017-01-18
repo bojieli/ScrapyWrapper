@@ -35,6 +35,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		},
 		"content": {
 			'type': 'db',
+			'unique': ['HealthPath'],
+			'upsert': True,
 			'table_name': 'AnnualHealthStasticClassification',
 			'fields': [{
 				'name': 'HealthName',
@@ -68,6 +70,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		},
 		"db": {
 			'type': "db",
+			'unique': ['HealthDataTypeID', 'StatisticType', 'DataYear'],
+			'upsert': True,
 			'table_name': "AnnualHealthStastic",
 			'fields': [{
 				'name': 'HealthName', 'value': None

@@ -28,6 +28,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "PharmacistRecord",
+			'unique': ['PharmacistName', 'PharmacistGender', 'CertificateNumber'],
+			'upsert': True,
 			'fields': [
 			{
 				'name': "PharmacistName",
@@ -35,7 +37,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'required': True
 			}, {
 				'name': "PharmacistGender",
-				'selector_table_sibling': u'性别'
+				'selector_table_sibling': u'性别',
+				'required': True
 			}, {
 				'name': "ResidingProvince",
 				'selector_table_sibling': u'所在省份'
@@ -49,7 +52,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				}
 			}, {
 				'name': "CertificateNumber",
-				'selector_table_sibling': u'资格证号'
+				'selector_table_sibling': u'资格证号',
+				'required': True
 			}, {
 				'name': "WorkLocation",
 				'selector_table_sibling': u'工作单位'
