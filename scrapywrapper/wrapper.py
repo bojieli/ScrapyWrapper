@@ -637,7 +637,10 @@ class SpiderWrapper(scrapy.Spider):
 
 		if result is not None:
 			if type(result) is not unicode:
-				result = result.decode('utf-8', 'ignore')
+				try:
+					result = result.decode('utf-8', 'ignore')
+				except:
+					result = unicode(result)
 			result = result.strip()
 		return result
 
