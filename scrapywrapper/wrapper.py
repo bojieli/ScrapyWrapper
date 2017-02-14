@@ -393,20 +393,23 @@ class SpiderWrapper(scrapy.Spider):
 						else:
 							new_objs = []
 							for o in next_objs:
-								if type(o) is list and l.isdigit() and len(o) > int(l):
-									new_objs.append(o[int(l)])
+								if type(o) is list:
+									if l.isdigit():
+										if len(o) > int(l):
+											new_objs.append(o[int(l)])
+									else:
+										next_objs.extend(o)
 								elif type(o) is dict and l in o:
 									new_objs.append(o[l])
 							next_objs = new_objs
 
-						newlist = []
-						for o in next_objs:
-							if type(o) is list:
-								newlist.extend(o)
-							else:
-								newlist.append(o)
-						next_objs = newlist
-					results = [ json.dumps(o, ensure_ascii=False).strip('"') for o in next_objs ]
+					new_objs = []
+					for o in next_objs:
+						if type(o) is list:
+							new_objs.extend(o)
+						else:
+							new_objs.append(o)
+					results = [ json.dumps(o, ensure_ascii=False).strip('"') for o in new_objs ]
 			# end selector json
 
 			else: # plain text
@@ -584,21 +587,21 @@ class SpiderWrapper(scrapy.Spider):
 						else:
 							new_objs = []
 							for o in next_objs:
-								if type(o) is list and l.isdigit() and len(o) > int(l):
-									new_objs.append(o[int(l)])
+								if type(o) is list:
+									if l.isdigit():
+										if len(o) > int(l):
+											new_objs.append(o[int(l)])
+									else:
+										next_objs.extend(o)
 								elif type(o) is dict and l in o:
 									new_objs.append(o[l])
 							next_objs = new_objs
 
-						newlist = []
-						for o in next_objs:
-							if type(o) is list:
-								newlist.extend(o)
-							else:
-								newlist.append(o)
-						next_objs = newlist
-
+					result = ''
 					for o in next_objs:
+						if type(o) is list:
+							o = o[0]
+
 						if type(o) is str or type(o) is unicode:
 							result = o
 							break
@@ -795,7 +798,7 @@ class SpiderWrapper(scrapy.Spider):
 		if parsed:
 			return int(parsed)
 		try:
-			m = re.search('[0-9-][0-9]*', text.replace(',', ''))
+			m = re.search('[0-9-][0-9]*', text)
 			return int(m.group(0))
 		except:
 			return None

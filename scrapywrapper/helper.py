@@ -50,7 +50,7 @@ class ScrapyHelper():
 	        u'0':0, u'1':1, u'2':2, u'3':3, u'4':4,
 	        u'5':5, u'6':6, u'7':7, u'8':8, u'9':9,
 			u'.':'.', u'-':'-',
-			u' ':' ', u'\t':' ' }
+			u' ':' ', u'\t':' ', u',':' ' }
 	
 	def parse_chinese_int(self, chinese_digits):
 		# skip any non-number chars
@@ -67,6 +67,7 @@ class ScrapyHelper():
 		result  = 0
 		tmp     = 0
 		hnd_mln = 0
+		is_decimal = False
 		decimal_count = 0
 		minus   = 0
 		for count in range(len(chinese_digits)):
@@ -78,11 +79,13 @@ class ScrapyHelper():
 				minus = 1
 			# meet demical point
 			elif curr_digit == '.':
+				is_decimal = True
 				decimal_count = 0
 			# meet 「亿」 or 「億」
 			elif curr_digit == 10 ** 8:
 				result  = result + tmp
 				result  = result * curr_digit / float(10 ** decimal_count)
+				is_decimal = False
 				decimal_count = 0
 				# get result before 「亿」 and store it into hnd_mln
 				# reset `result`
@@ -93,18 +96,21 @@ class ScrapyHelper():
 			elif curr_digit == 10 ** 4:
 				result = result + tmp
 				result = result * curr_digit / float(10 ** decimal_count)
+				is_decimal = False
 				decimal_count = 0
 				tmp    = 0
 			# meet 「十」, 「百」, 「千」 or their traditional version
 			elif curr_digit >= 10:
 				tmp    = 1 if tmp == 0 else tmp
 				result = result + curr_digit / float(10 ** decimal_count) * tmp
+				is_decimal = False
 				decimal_count = 0
 				tmp    = 0
 			# meet single digit
 			elif curr_digit is not None:
 				tmp = tmp * 10 + curr_digit
-				decimal_count += 1
+				if is_decimal:
+					decimal_count += 1
 			else:
 				break
 		result = result + tmp / float(10 ** decimal_count)
