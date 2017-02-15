@@ -124,7 +124,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_json': 'Date_time',
 				'data_type': 'Date',
 				# only get the 1st day price per month
-				'data_validator': lambda datestr, _: datestr.split('-')[2] == '01',
+				'data_validator': lambda datestr, _: datestr.split('-')[2] == '01' and datetime.datetime.strptime(datestr, '%Y-%m-%d') <= datetime.date.today(),
 				'required': True
 			}, {
 				'name': 'Price',

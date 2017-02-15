@@ -7,7 +7,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 	crawlera_enabled = True
 
 	def url_generator(self):
-		for i in range(47076,0,-1):
+		for i in range(50000,0,-1):
 			yield 'http://db.yaozh.com/instruct/' + str(i) + '.html'
 
 
