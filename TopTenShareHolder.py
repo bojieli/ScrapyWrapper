@@ -50,11 +50,13 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': "NumberOfShare",
 				'selector_xpath': '//td[3]',
-				'data_type': 'int'
+				'data_type': 'int',
+				'required': True
 			}, {
 				'name': "PercentOfTotalShare",
 				'selector_xpath': '//td[4]',
-				'data_type': 'percentage'
+				'data_type': 'percentage',
+				'required': True
 			}, {
 				'name': "ChangeInShare",
 				'selector_xpath': '//td[5]'

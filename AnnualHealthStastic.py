@@ -9,9 +9,12 @@ import demjson
 def get_code_mapping(text, meta):
 	obj = demjson.decode(text)
 	mapping = {}
-	for zb in obj['returndata']['wdnodes'][0]['nodes']:
-		mapping[zb['code']] = zb['cname']
-	meta['$$mapping_code_to_zb'] = mapping
+	try:
+		for zb in obj['returndata']['wdnodes'][0]['nodes']:
+			mapping[zb['code']] = zb['cname']
+		meta['$$mapping_code_to_zb'] = mapping
+	except:
+		print(obj)
 	return text
 
 class ScrapyConfig(ScrapyWrapperConfig):
@@ -47,20 +50,23 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_json': 'id',
 				'required': True
 			}],
-			'res': [{
+			'res': [
+			{
+				'selector_json': 'isParent',
+				'data_validator': lambda m,_: m == 'true',
+				'data_postprocessor': lambda _,meta: meta['HealthPath'],
+				'next_step': 'begin'
+			},
+			{
 				'selector_json': 'id',
 				'next_step': 'rows'
-			}, {
-				'selector_json': 'isParent',
-				'data_validator': lambda m,_: m == 'True',
-				'data_postprocessor': lambda _,meta: 'id=' + meta['HealthPath'] + '&dbcode=hgnd&wdcode=zb&m=getTree',
-				'next_step': 'begin'
-			}]
+			} 
+			]
 		},
 		"rows": {
 			'req': {
 				'method': 'post',
-				'url': lambda _id, meta: 'http://data.stats.gov.cn/easyquery.htm?m=QueryData&dbcode=hgnd&rowcode=zb&colcode=sj&wds=%5B%5D&dfwds=%5B%7B%22wdcode%22%3A%22zb%22%2C%22valuecode%22%3A' + _id + '%7D%5D&k1=1483425362507',
+				'url': lambda _id, meta: 'http://data.stats.gov.cn/easyquery.htm?m=QueryData&dbcode=hgnd&rowcode=zb&colcode=sj&wds=%5B%5D&dfwds=%5B%7B%22wdcode%22%3A%22zb%22%2C%22valuecode%22%3A%22' + _id + '%22%7D%5D',
 			},
 			'res': {
 				'data_preprocessor': get_code_mapping,

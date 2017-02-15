@@ -4,23 +4,17 @@ from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
 
 class ScrapyConfig(ScrapyWrapperConfig):
+	crawlera_enabled = True
+
 	def url_generator(self):
-		for i in range(16913,0,-1):
-			#yield 'http://db.yaozh.com/api/index.php/Home/index/yaopinjiage/id/' + str(i)
-			yield 'http://127.0.0.1:9576/instruct/id/' + str(i)
+		for i in range(47076,0,-1):
+			yield 'http://db.yaozh.com/instruct/' + str(i) + '.html'
 
 
 	begin_urls = url_generator
-	#begin_urls = ["http://db.yaozh.com/api/index.php/Home/index/yaopinzhongbiao/id/3542343"]
+
 	steps = {
 		"begin": {
-			'req': {
-				'method': "post",
-				'post_formdata': {
-					"access_token": "5555f086252b2c47debad752b5272bb9",
-					"client": "Android"
-				}
-			},
 			'res': {
 				'next_step': 'db'
 			}
@@ -28,87 +22,88 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "DrugManual",
-			'unique': ['DrugName', 'Manufacturer'],
+			'unique': ['DrugName', 'SourceOfManual'],
 			'upsert': True,
 			'fields': [
 			{
 				'name': "DrugID",
 				'reference': {
 					'table': "TB_Resources_MedicineMadeInChina",
-					'fields': ["DrugName", "Manufacturer"],
-					'remote_fields': ["CnName", "ProductionUnit"],
+					'fields': ["DrugName"],
+					'remote_fields': ["CnName"],
 					'remote_id_field': 'ResID'
 				}
 			}, {
 				'name': "DrugName",
-				'selector_json': "me_name",
+				'selector_regex': "通\s*用\s*名\s*：(.*?)<br>",
 				'required': True
 			}, {
 				'name': "SourceOfManual",
-				'selector_json': "me_source"
+				'selector_regex': "说明书来源:</span>(.*?)</div>",
+				'required': True
 			}, {
 				'name': "Composition",
-				'selector_json': "me_chengfen"
+				'selector_regex': "<b>【成分】</b>(.*?)</p>"
 			}, {
 				'name': "Characteristics",
-				'selector_json': "me_xingzhuang"
+				'selector_regex': "<b>【性状】</b>(.*?)</p>"
 			}, {
 				'name': "Indication",
-				'selector_json': "me_zhuzhi"
+				'selector_regex': "<b>【功能主治】</b>(.*?)</p>"
 			}, {
 				'name': "UsageAndDosage",
-				'selector_json': "me_yongfa"
+				'selector_regex': "<b>【用法用量】</b>(.*?)</p>"
 			}, {
 				'name': "SideEffects",
-				'selector_json': "me_fanying"
+				'selector_regex': "<b>【不良反应】</b>(.*?)</p>"
 			}, {
 				'name': "Warnings",
-				'selector_json': "me_jingji"
+				'selector_regex': "<b>【禁忌】</b>(.*?)</p>"
 			}, {
 				'name': "KeyMatters",
-				'selector_json': "me_zhuyi",
+				'selector_regex': "<b>【注意事项】</b>(.*?)</p>"
 			}, {
 				'name': "PregnancyAndBreastFeedingWarnings",
-				'selector_json': "me_yunfu"
+				'selector_regex': "<b>【孕妇及哺乳期妇女用药】</b>(.*?)</p>"
 			}, {
 				'name': "ChildrenWarnings",
-				'selector_json': "me_ertong"
+				'selector_regex': "<b>【儿童用药】</b>(.*?)</p>"
 			}, {
 				'name': "ElderlyWarnings",
-				'selector_json': "me_laonian"
+				'selector_regex': "<b>【老年患者用药】</b>(.*?)</p>"
 			}, {
 				'name': "DrugInteractions",
-				'selector_json': "me_xianghuzhuoyong"
+				'selector_regex': "<b>【药物相互作用】</b>(.*?)</p>"
 			}, {
 				'name': "DrugOverdose",
-				'selector_json': "me_guoliang"
+				'selector_regex': "<b>【药物过量】</b>(.*?)</p>"
 			}, {
 				'name': "PharmacologyAndToxicology",
-				'selector_json': "me_yaolidaoli"
+				'selector_regex': "<b>【药理毒理】</b>(.*?)</p>"
 			}, {
 				'name': "pharmacokinetics",
-				'selector_json': "me_yaodai"
+				'selector_regex': "<b>【药代动力学】</b>(.*?)</p>"
 			}, {
 				'name': "DrugStorage",
-				'selector_json': "me_zhucang"
+				'selector_regex': "<b>【贮藏】</b>(.*?)</p>"
 			}, {
 				'name': "DrugPackaging",
-				'selector_json': "me_baozhuang"
+				'selector_regex': "<b>【包装】</b>(.*?)</p>"
 			}, {
 				'name': "ShelfLife",
-				'selector_json': "me_yaoxiaoqi"
+				'selector_regex': "<b>【有效期】</b>(.*?)</p>"
 			}, {
 				'name': "ProductStandard",
-				'selector_json': "me_zhixingbiaozhun"
+				'selector_regex': "<b>【执行标准】</b>(.*?)</p>"
 			}, {
 				'name': "ApprovalNumber",
-				'selector_json': "me_pizhunwenhao"
+				'selector_regex': "<b>【批准文号】</b>(.*?)</p>"
 			}, {
 				'name': "Manufacturer",
-				'selector_json': "me_changjia"
+				'selector_regex': "<b>【生产名称】</b>(.*?)</p>"
 			}, {
 				'name': "Specification",
-				'selector_json': "me_guige"
+				'selector_regex': "<b>【规格】</b>(.*?)</p>"
 			}
 			]
 		}

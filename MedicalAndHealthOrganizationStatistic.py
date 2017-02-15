@@ -22,8 +22,9 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		},
 		"content": {
 			'res': {
-				'selector_css': '#page_content',
-				'next_step': 'db'
+				'selector_css': '.list',
+				'next_step': 'db',
+				'required': True
 			}
 		},
 		"db": {
@@ -31,17 +32,19 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'table_name': "MedicalAndHealthOrganizationStatistic",
 			'fields': [{
 				'name': "PublicationDate",
-				'selector_css': 'div.content_subtitle',
-				'selector_regex': u'([0-9]{4}-[0-9]{2}-[0-9]{2})',
+				'selector_css': 'div.source',
+				'selector_regex': u'发布时间：\s*([0-9]{4}-[0-9]{2}-[0-9]{2})',
+				'data_type': 'Date',
 				'required': True
 			}, {
 				'name': "Headline",
-				'selector_css': '#zoomtitle',
+				'selector_css': '.tit',
 				'required': True
 			}, {
 				'name': "DetailContent",
-				'selector_css': '#zoomcon',
+				'selector_css': '#xw_box',
 				'strip_tags': False,
+				'download_images': True,
 				'required': True
 			}
 			]
