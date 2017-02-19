@@ -35,6 +35,15 @@ for line in f:
 		else:
 			fields.extend(values)
 			value_types.extend(['%s' for v in values])
+
+		fields = [s.replace('_','').replace(';','') for s in fields]
+		new_fields = []
+		for f in fields:
+			if f == 'PatentExpireDateText':
+				new_fields.append('ExpireDate')
+			else:
+				new_fields.append(f)
+		fields = new_fields
 		print(fields)
 		continue
 	count += 1
@@ -70,8 +79,8 @@ def insertshard(conn, cursor, table_name, fields, value_types, table_data):
 	for i in range(0, total, shard_size):
 		shard = table_data[i:i+shard_size]
 		insertmany(cursor, table_name, fields, value_types, shard)
-		conn.commit()
 		print(i)
 
 insertshard(conn, cursor, table_name, fields, value_types,  table_data)
+conn.commit()
 conn.close()
