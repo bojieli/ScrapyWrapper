@@ -14,6 +14,13 @@ table_data = []
 f = open(sys.argv[1], 'r')
 table_name = sys.argv[2]
 
+add_int_id = False
+try:
+	if sys.argv[3]:
+		add_int_id = True
+except:
+	pass
+
 def parse_date(s):
 	month_map = {'Jan':1, 'Feb':2, 'Mar':3, 'Apr':4, 'May':5, 'Jun':6, 'Jul':7, 'Aug':8, 'Sep':9, 'Oct':10, 'Nov':11, 'Dec':12}
 	x = [v.strip(',') for v in s.split(' ')]
@@ -21,6 +28,8 @@ def parse_date(s):
 
 fields = ['ID']
 value_types = ['NEWID()']
+if add_int_id:
+	value_types = ['%s']
 table_data = []
 first_line = True
 count = 0
@@ -32,7 +41,7 @@ for line in f:
 		if "ID" in values:
 			fields = values
 			value_types = ['%s' for v in values]
-		elif values[0].endswith('ID'):
+		elif not add_int_id and values[0].endswith('ID'):
 			values[0] = 'ID'
 			fields = values
 			value_types = ['%s' for v in values]
@@ -44,6 +53,8 @@ for line in f:
 		print(fields)
 		continue
 	count += 1
+	if add_int_id:
+		values = [str(count)] + values
 	table_data.append(values)
 
 cursor.execute("DELETE FROM " + table_name)
