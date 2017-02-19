@@ -4,7 +4,7 @@ from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
 
 class ScrapyConfig(ScrapyWrapperConfig):
-	#crawlera_enabled = True
+	crawlera_enabled = True
 
 	def url_generator(self):
 		for i in range(1,300000):
