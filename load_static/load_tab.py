@@ -44,7 +44,7 @@ for line in f:
 		print(fields)
 		continue
 	count += 1
-	table_data.append([str(count)] + values)
+	table_data.append(values)
 
 cursor.execute("DELETE FROM " + table_name)
 cursor.execute("SET ANSI_WARNINGS off")
