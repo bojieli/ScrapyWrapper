@@ -115,7 +115,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': 'CurrentDate',
 				'selector': lambda _, meta: meta['$$Year'] + '-' + meta['$$Month'] + '-' + '01',
-				'data_validator': lambda _, meta: datetime.date(int(meta['$$Year']), int(meta['$$Month']), 1) <= datetime.date.today(),
+				'data_validator': lambda datestr, _: datestr.split('-')[2] == '01' and datetime.date(*(map(int, datestr.split('-')))) <= datetime.date.today(),
 				'data_type': 'Date',
 				'required': True
 			}, {

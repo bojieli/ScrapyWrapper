@@ -122,9 +122,9 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'fields': [{
 				'name': 'CurrentDate',
 				'selector_json': 'Date_time',
-				'data_type': 'Date',
 				# only get the 1st day price per month
-				'data_validator': lambda datestr, _: datestr.split('-')[2] == '01' and datetime.datetime.strptime(datestr, '%Y-%m-%d') <= datetime.date.today(),
+				'data_validator': lambda datestr, _: datestr.split('-')[2] == '01' and datetime.date(*(map(int, datestr.split('-')))) <= datetime.date.today(),
+				'data_type': 'Date',
 				'required': True
 			}, {
 				'name': 'Price',
