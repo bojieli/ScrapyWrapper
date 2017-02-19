@@ -65,6 +65,9 @@
 0 4 1 * *	/root/scrapywrapper/RunSpider.sh InfectiousDiseaseInfo
 0 4 1 * *	/root/scrapywrapper/RunSpider.sh MedicalAndHealthOrganizationStatistic
 
+0 4 1 * *	/root/scrapywrapper/load_static/OrangeBook.sh
+0 4 1 * *	/root/scrapywrapper/load_static/DrugsFDA.sh
+
 0 4 1 3 *	/root/scrapywrapper/RunSpider.sh DoctorRecord
 0 4 1 3 *	/root/scrapywrapper/RunSpider.sh PharmacistRecord
 0 4 1 3 *	/root/scrapywrapper/RunSpider.sh AnnualHealthStastic
