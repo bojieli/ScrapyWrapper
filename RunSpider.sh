@@ -6,5 +6,5 @@ LOGDIR=logs
 LOGSUBDIR=$SCRIPT
 mkdir -p $LOGDIR/$LOGSUBDIR
 LOGFILE=$LOGDIR/$LOGSUBDIR/$(date '+%Y-%m-%d').log
-scrapy runspider ${SCRIPT}.py >$LOGFILE 2>&1
+/usr/local/bin/scrapy runspider ${SCRIPT}.py >$LOGFILE 2>&1
 exit 0
