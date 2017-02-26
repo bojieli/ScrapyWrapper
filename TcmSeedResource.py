@@ -15,6 +15,13 @@ def is_page_higher_than_curr(url, meta):
 	next_page = int(m.group(1))
 	return next_page > curr_page
 
+def parse_TcmID(meta):
+	if '$$PreferredTcmID' in meta and meta['$$PreferredTcmID']:
+		meta['TcmID'] = meta['$$PreferredTcmID']
+	else:
+		meta['TcmID'] = meta['$$DefaultTcmID']
+	return meta
+
 class ScrapyConfig(ScrapyWrapperConfig):
 	begin_urls = ["http://124.254.6.83:8088/querymain.asp"]
 	steps = {
@@ -51,9 +58,12 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'table_name': "TcmSeedResource",
 			'unique': ['PlatformResNumber'],
 			'upsert': True,
+			'postprocessor': parse_TcmID,
 			'fields': [
 { 'name': "TcmSeedName", 'selector_table_sibling': u"种质名称", 'required': True },
-{ 'name': "TcmID", 'reference': {'field': 'TcmName', 'table': 'TB_Resources_TraditionalChineseMedicinalMaterials', 'remote_field': 'MedicineName', 'remote_id_field': 'ResID', 'insert_if_not_exist': True } },
+{ 'name': "$$YaoDianName", 'value': u'中国药典2015年版一部' },
+{ 'name': "$$PreferredTcmID", 'reference': {'fields': ['TcmName', '$$YaoDianName'], 'table': 'TB_Resources_TraditionalChineseMedicinalMaterials', 'remote_fields': ['MedicineName', 'StandardSource'], 'remote_id_field': 'ResID' } },
+{ 'name': "$$DefaultTcmID", 'reference': {'field': 'TcmName', 'table': 'TB_Resources_TraditionalChineseMedicinalMaterials', 'remote_field': 'MedicineName', 'remote_id_field': 'ResID', 'insert_if_not_exist': True } },
 { 'name': "TcmSeedEnglishName", 'selector_table_sibling': u"种质外文名" },
 { 'name': "PlatformResNumber", 'selector_table_sibling': u"平台资源号" },
 { 'name': "ResNumber", 'selector_table_sibling': u"资源编号" },
