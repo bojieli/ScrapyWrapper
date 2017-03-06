@@ -816,6 +816,16 @@ class SpiderWrapper(scrapy.Spider):
 		except:
 			return None
 
+
+	def _get_image_urls_from_doc(self, doc):
+		for m in doc.xpath('//img/@src'):
+			yield str(m)
+
+		for m in doc.xpath('//a/@href'):
+			re_m = re.search('.*\.(jpg|png|jpeg|gif|bmp)$', str(m))
+			if re_m:
+				yield re_m.group(0)
+
 	def _download_images_from_html(self, response_text, meta):
 		if not response_text:
 			return response_text
@@ -827,9 +837,9 @@ class SpiderWrapper(scrapy.Spider):
 		except:
 			return response_text
 
-		for m in doc.xpath('//img/@src'):
+		for m in self._get_image_urls_from_doc(doc):
 			response = AttrDict()
-			response.url = urljoin(meta['$$url'], str(m))
+			response.url = urljoin(meta['$$url'], m)
 			response.meta = meta
 			try:
 				response.body_stream = urllib2.urlopen(response.url)
@@ -841,7 +851,7 @@ class SpiderWrapper(scrapy.Spider):
 			if record:
 				filepath, _ = record
 				image_urls.append((filepath, response.url))
-				response_text = response_text.replace(str(m), filepath)
+				response_text = response_text.replace(m, filepath)
 
 		if '$$image_urls' not in meta:
 			meta['$$image_urls'] = []
