@@ -20,11 +20,24 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'url': lambda url, meta: 'http://f10.eastmoney.com/f10_v2/ShareholderResearch.aspx?code=sz' + str(url)
 			},
 			'res': {
+				'selector_xpath': '//body',
+				'next_step': 'page'
+			},
+			'fields': [{
+				'name': '$$StockCode'
+			}]
+		},
+		"page": {
+			'type': 'intermediate',
+			'res': {
 				'selector_xpath': '//*[@id="TTS_Table_Div"]/table[1]/tr',
 				'next_step': 'db'
 			},
 			'fields': [{
-				'name': '$$StockCode'
+				'name': "ReportDate",
+				'selector_xpath': '//li[@onclick="TTS_ChangeTab(0,this);"]',
+				'data_type': 'Date',
+				'required': True
 			}]
 		},
 		"db": {
@@ -63,9 +76,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': "ChangePercentage",
 				'selector_xpath': '//td[6]'
-			}, {
-				'name': "ReportDate",
-				'selector': lambda r, m: datetime.datetime.now().strftime('%Y-%m-%d')
 			}
 			]
 		}
