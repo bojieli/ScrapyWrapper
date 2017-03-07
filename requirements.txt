@@ -6,4 +6,5 @@ lxml
 cssselect
 slimit
 selenium
+demjson
 https://github.com/sosign/scrapy-webdriver/archive/master.zip
