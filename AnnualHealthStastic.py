@@ -5,13 +5,14 @@ from scrapywrapper.config import ScrapyWrapperConfig
 import re
 import json
 import demjson
+import urllib
 
 def get_code_mapping(text, meta):
 	obj = demjson.decode(text)
 	mapping = {}
 	try:
 		for zb in obj['returndata']['wdnodes'][0]['nodes']:
-			mapping[zb['code']] = zb['cname']
+			mapping[zb['code']] = zb
 		meta['$$mapping_code_to_zb'] = mapping
 	except:
 		print(obj)
@@ -38,9 +39,9 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		},
 		"content": {
 			'type': 'db',
+			'table_name': 'AnnualHealthStasticClassification',
 			'unique': ['HealthPath'],
 			'upsert': True,
-			'table_name': 'AnnualHealthStasticClassification',
 			'fields': [{
 				'name': 'HealthName',
 				'selector_json': 'name',
@@ -66,7 +67,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"rows": {
 			'req': {
 				'method': 'post',
-				'url': lambda _id, meta: 'http://data.stats.gov.cn/easyquery.htm?m=QueryData&dbcode=hgnd&rowcode=zb&colcode=sj&wds=%5B%5D&dfwds=%5B%7B%22wdcode%22%3A%22zb%22%2C%22valuecode%22%3A%22' + _id + '%22%7D%5D',
+				'url': lambda _id, meta: 'http://data.stats.gov.cn/easyquery.htm?m=QueryData&dbcode=hgnd&rowcode=zb&colcode=sj&wds=%5B%5D&dfwds=' + urllib.quote('[{"wdcode":"zb","valuecode":"' + _id + '"},{"wdcode":"sj","valuecode":"LAST20"}]')
 			},
 			'res': {
 				'data_preprocessor': get_code_mapping,
@@ -89,8 +90,17 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': 'StatisticType',
 				'selector_json': 'wds.0.valuecode',
-				'data_postprocessor': lambda code, meta: meta['$$mapping_code_to_zb'][code],
+				'data_postprocessor': lambda code, meta: meta['$$mapping_code_to_zb'][code]['cname'],
 				'required': True
+			}, {
+				'name': 'StatisticUnit',
+				'selector_json': 'wds.0.valuecode',
+				'data_postprocessor': lambda code, meta: meta['$$mapping_code_to_zb'][code]['unit'],
+				'required': True
+			}, {
+				'name': 'StatisticTypeComment',
+				'selector_json': 'wds.0.valuecode',
+				'data_postprocessor': lambda code, meta: meta['$$mapping_code_to_zb'][code]['memo']
 			}, {
 				'name': 'DataYear',
 				'selector_json': 'wds.1.valuecode',
