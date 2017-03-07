@@ -822,9 +822,9 @@ class SpiderWrapper(scrapy.Spider):
 			yield str(m)
 
 		for m in doc.xpath('//a/@href'):
-			re_m = re.search('.*\.(jpg|png|jpeg|gif|bmp)$', str(m))
+			re_m = re.search('\.(jpg|png|gif|bmp)$', str(m))
 			if re_m:
-				yield re_m.group(0)
+				yield str(m)
 
 	def _download_images_from_html(self, response_text, meta):
 		if not response_text:
