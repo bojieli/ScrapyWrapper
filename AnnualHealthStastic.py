@@ -100,7 +100,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': 'StatisticTypeComment',
 				'selector_json': 'wds.0.valuecode',
-				'data_postprocessor': lambda code, meta: meta['$$mapping_code_to_zb'][code]['memo']
+				'data_postprocessor': lambda code, meta: meta['$$mapping_code_to_zb'][code]['exp']
 			}, {
 				'name': 'DataYear',
 				'selector_json': 'wds.1.valuecode',
