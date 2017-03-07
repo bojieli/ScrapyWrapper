@@ -9,6 +9,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		for i in range(1,2000):
 			yield "http://www.zyctd.com/jh" + str(i) + ".html"
 
+	crawlera_enabled = True
 	begin_urls = url_generator
 
 	steps = {
@@ -21,10 +22,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"content": {
 			'type': 'intermediate',
 			'res': [{
-				'selector_xpath': '//*[@id="jg"]//table[2]//tr',
-				'next_step': 'TcmPlaceOfOriginPrice'
-			},
-			{
 				'selector_xpath': '//*[@id="jg"]//table[1]//tr',
 				'next_step': 'TcmMarketDailyPrice'
 			}],
