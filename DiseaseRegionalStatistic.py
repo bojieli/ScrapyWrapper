@@ -24,7 +24,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		baseurl = "http://chinacdc.cn:81/PF/page/runqian/runqianCondi.jsp?ID=custom&runqianId=faba666e-5fc7-451d-aeb8-2533e2d762a4&raqName=ReportZone.raq&reportType=1&zoneCode=%2000000000"
 		for diseaseID in range(1, 200):
 			disease_url = baseurl + '&diseaseId=' + str(diseaseID)
-			for yearSel in range(2014, 2015):
+			for yearSel in range(2014, 2017):
 				year_url = disease_url + '&yearSel=' + str(yearSel)
 				yield year_url
 				for monthSel in range(1, 13):
