@@ -54,6 +54,10 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				},
 				'required': True
 			}, {
+				'name': "$$order",
+				'selector_xpath': '//th[1]',
+				'required': True
+			}, {
 				'name': "ShareHolderName",
 				'selector_xpath': '//td[1]',
 				'required': True
