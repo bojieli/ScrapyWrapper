@@ -6,39 +6,18 @@ import datetime
 
 class ScrapyConfig(ScrapyWrapperConfig):
 	def url_generator(self):
-		for i in range(1,2000):
-			yield "http://www.zyctd.com/jh" + str(i) + ".html"
+		for i in range(1,250):
+			yield "http://www.zyctd.com/jiage/1-0-0-" + str(i) + ".html"
 
-	crawlera_enabled = True
+	#crawlera_enabled = True
 	begin_urls = url_generator
 
 	steps = {
 		"begin": {
 			'res': {
-				'selector_xpath': '//body',
-				'next_step': 'content',
+				'selector_css': 'ul.priceTableRows li',
+				'next_step': 'TcmMarketDailyPrice',
 			}
-		},
-		"content": {
-			'type': 'intermediate',
-			'res': [{
-				'selector_xpath': '//*[@id="jg"]//table[1]//tr',
-				'next_step': 'TcmMarketDailyPrice'
-			}],
-			'fields': [{
-				'name': 'TcmID',
-				'reference': {
-					'field': '$$TcmName',
-					'table': 'TB_Resources_TraditionalChineseMedicinalMaterials',
-					'remote_field': 'MedicineName',
-					'remote_id_field': 'ResID'
-				},
-				'required': True
-			}, {
-				'name': '$$TcmName',
-				'selector_xpath': '//div[@class="breedtitle"]//h1/text()',
-				'required': True
-			}]
 		},
 		"TcmMarketDailyPrice": {
 			'type': 'db',
@@ -56,32 +35,49 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				},
 				'required': True
 			}, {
+				'name': 'TcmID',
+				'reference': {
+					'field': '$$TcmName',
+					'table': 'TB_Resources_TraditionalChineseMedicinalMaterials',
+					'remote_field': 'MedicineName',
+					'remote_id_field': 'ResID'
+				},
+				'required': True
+			}, {
+				'name': '$$TcmName',
+				'selector_css': 'span.w1 a',
+				'required': True
+			}, {
 				'name': '$$MarketName',
-				'selector_xpath': '//td[2]',
+				'selector_css': 'span.w9',
 				'required': True
 			}, {
 				'name': 'Specification',
-				'selector_xpath': '//td[1]',
-				'selector_regex': '([^ ]*)', # remove province
+				'selector_css': 'span.w2',
 				'required': True
 			}, {
 				'name': 'CurrentDate',
 				'value': datetime.datetime.today().strftime('%Y-%m-%d')
 			}, {
 				'name': 'Price',
-				'selector_xpath': '//td[3]',
+				'selector_css': 'span.w3',
 				'data_type': 'float',
 				'required': True
 			}, {
 				'name': 'IncreaseFromLastWeek',
-				'selector_xpath': '//td[4]',
-				'data_type': 'float'
+				'selector_css': 'span.w5',
+				'data_type': 'float',
+				'required': True
 			}, {
 				'name': 'IncreaseFromLastMonth',
-				'value': None,
+				'selector_css': 'span.w6',
+				'data_type': 'float',
+				'required': True
 			}, {
 				'name': 'IncreaseFromLastYear',
-				'value': None
+				'selector_css': 'span.w7',
+				'data_type': 'float',
+				'required': True
 			}]
 		}
 	}
