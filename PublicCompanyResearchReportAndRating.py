@@ -35,6 +35,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'fields': [{
 				'name': 'Conclusion',
 				'selector_xpath': '//span/em',
+				'data_postprocessor': lambda n, _: n.strip('[]'),
 				'required': True
 			}, {
 				'name': 'PublicationDate',
