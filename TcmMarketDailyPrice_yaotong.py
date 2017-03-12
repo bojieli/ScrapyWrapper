@@ -5,26 +5,33 @@ from scrapywrapper.config import ScrapyWrapperConfig
 import datetime
 
 class ScrapyConfig(ScrapyWrapperConfig):
-	def url_generator(self):
-		for i in range(1,250):
-			yield "http://www.zyctd.com/jiage/1-0-0-" + str(i) + ".html"
-
-	#crawlera_enabled = True
-	begin_urls = url_generator
+	begin_urls = ["http://www.yt1998.com/price/nowDayPriceQ!getPriceList.do?random=0.02907702647346211&ycnam=&market=&leibie=&istoday=&spices=&paramName=&paramValue=&pageIndex=1&pageSize=10000"]
 
 	steps = {
 		"begin": {
 			'res': {
-				'selector_css': 'ul.priceTableRows li',
-				'next_step': 'TcmMarketDailyPrice',
+				'selector_json': 'data',
+				'next_step': 'db_day',
 			}
 		},
-		"TcmMarketDailyPrice": {
-			'type': 'db',
-			'table_name': 'TcmMarketDailyPrice',
+		"db_day": {
+			'type': "db",
+			'table_name': "TcmMarketDailyPrice",
 			'unique': ['TcmID', 'Specification', 'MarketID', 'CurrentDate', 'PriceSource'],
 			'upsert': True,
 			'fields': [{
+				'name': 'CurrentDate',
+				'value': datetime.datetime.today().strftime('%Y-%m-%d')
+			}, {
+				'name': 'Specification',
+				'selector_json': 'guige',
+				'required': True
+			}, {
+				'name': 'Price',
+				'selector_json': 'pri',
+				'data_type': 'float',
+				'required': True
+			}, {
 				'name': 'MarketID',
 				'reference': {
 					'field': '$$MarketName',
@@ -35,52 +42,41 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				},
 				'required': True
 			}, {
+				'name': '$$MarketName',
+				'selector_json': 'shichang',
+				'required': True
+			}, {
 				'name': 'TcmID',
 				'reference': {
 					'field': '$$TcmName',
 					'table': 'TB_Resources_TraditionalChineseMedicinalMaterials',
 					'remote_field': 'MedicineName',
-					'remote_id_field': 'ResID'
+					'remote_id_field': 'ResID',
+					'insert_if_not_exist': True
 				},
 				'required': True
 			}, {
 				'name': '$$TcmName',
-				'selector_css': 'span.w1 a',
-				'required': True
-			}, {
-				'name': '$$MarketName',
-				'selector_css': 'span.w9',
-				'required': True
-			}, {
-				'name': 'Specification',
-				'selector_css': 'span.w2',
-				'required': True
-			}, {
-				'name': 'CurrentDate',
-				'value': datetime.datetime.today().strftime('%Y-%m-%d')
-			}, {
-				'name': 'Price',
-				'selector_css': 'span.w3',
-				'data_type': 'float',
+				'selector_json': 'ycnam',
 				'required': True
 			}, {
 				'name': 'IncreaseFromLastWeek',
-				'selector_css': 'span.w5',
+				'selector_json': 'zhouduibi',
 				'data_type': 'float',
 				'required': True
 			}, {
 				'name': 'IncreaseFromLastMonth',
-				'selector_css': 'span.w6',
+				'selector_json': 'yueduibi',
 				'data_type': 'float',
 				'required': True
 			}, {
 				'name': 'IncreaseFromLastYear',
-				'selector_css': 'span.w7',
+				'selector_json': 'nianduibi',
 				'data_type': 'float',
 				'required': True
 			}, {
 				'name': 'PriceSource',
-				'value': '1'
+				'value': '3'
 			}]
 		}
 	}
