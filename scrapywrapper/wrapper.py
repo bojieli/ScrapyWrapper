@@ -808,7 +808,7 @@ class SpiderWrapper(scrapy.Spider):
 			return None
 		text = text.replace(',', '')
 		parsed = ScrapyHelper().parse_chinese_int(text)
-		if parsed:
+		if parsed is not None:
 			return float(parsed)
 		try:
 			m = re.search('[0-9.-][0-9.]*', parsed.replace(',', ''))
