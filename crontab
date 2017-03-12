@@ -42,6 +42,7 @@
 35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyQuarterlyAndAnnualReport
 35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyResearchReportAndRating
 35 9 * * *	/root/scrapywrapper/RunSpider.sh BusinessIntelligence
+35 9 * * *	/root/scrapywrapper/RunSpider.sh TopTenShareHolder
 
 35 9 * * 2	/root/scrapywrapper/RunSpider.sh HistoricalWeatherDisaster
 35 9 * * 2	/root/scrapywrapper/RunSpider.sh DiseaseForecast
@@ -58,7 +59,6 @@
 35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginMonthlyPrice_yaotong
 35 9 7 * *	/root/scrapywrapper/RunSpider.sh DrugBidInfo
 35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmTradingCompany
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh TopTenShareHolder
 35 9 7 * *	/root/scrapywrapper/RunSpider.sh PlantingBase
 35 9 7 * *	/root/scrapywrapper/RunSpider.sh ExtractInfo
 35 9 7 * *	/root/scrapywrapper/RunSpider.sh PatentCategoryNumber
