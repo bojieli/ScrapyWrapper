@@ -62,18 +62,12 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'next_step': 'spec'
 			},
 			'fields': [{
-				'name': '$$PlaceOfOrigin',
+				'name': "PlaceOfOriginID",
+				'reference': { 'field': 'PlaceOfOrigin', 'table': 'TB_Addresses', 'remote_field': 'Name', 'remote_id_field': 'PID', 'match': 'lpm' }
+			}, {
+				'name': 'PlaceOfOrigin',
 				'selector_json': 'chandi',
 				'required': True
-			}, {
-				'name': 'MarketID',
-				'reference': {
-					'field': '$$MarketName',
-					'table': 'TcmMarket',
-					'remote_field': 'MarketAddress',
-					'remote_id_field': 'ID',
-					'match': 'wildcard'
-				},
 			}]
 		},
 		'spec': {
@@ -82,7 +76,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'method': 'post',
 				'post_formdata': {
 					'ycnam': lambda _, meta: meta['$$TcmName'],
-					'chandi': lambda _, meta: meta['$$PlaceOfOrigin'],
+					'chandi': lambda _, meta: meta['PlaceOfOrigin'],
 					'market': lambda _, meta: meta['$$Market'],
 				},
 			},
@@ -108,7 +102,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'method': 'post',
 				'post_formdata': {
 					'ycnam': lambda _, meta: meta['$$TcmName'],
-					'chandi': lambda _, meta: meta['$$PlaceOfOrigin'],
+					'chandi': lambda _, meta: meta['PlaceOfOrigin'],
 					'guige': lambda _, meta: meta['Specification'],
 					'market': lambda _, meta: meta['$$Market'],
 				},
@@ -123,8 +117,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		},
 		"db_month": {
 			'type': "db",
-			'table_name': "TcmMarketMonthlyPrice",
-			'unique': ['TcmID', 'Specification', 'MarketID', 'CurrentDate', 'PriceSource'],
+			'table_name': "TcmPlaceOfOriginMonthlyPrice",
+			'unique': ['TcmID', 'Specification', 'PlaceOfOrigin', 'CurrentDate', 'PriceSource'],
 			'upsert': True,
 			'fields': [{
 				'name': 'CurrentDate',
@@ -145,8 +139,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		},
 		"db_day": {
 			'type': "db",
-			'table_name': "TcmMarketMonthlyPrice",
-			'unique': ['TcmID', 'Specification', 'MarketID', 'CurrentDate'],
+			'table_name': "TcmPlaceOfOriginMonthlyPrice",
+			'unique': ['TcmID', 'Specification', 'PlaceOfOrigin', 'CurrentDate'],
 			'upsert': True,
 			'fields': [{
 				'name': 'CurrentDate',
