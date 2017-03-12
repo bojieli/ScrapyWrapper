@@ -24,9 +24,13 @@
 35 9 * * *	/root/scrapywrapper/RunSpider.sh AirQualityForecast
 35 9 * * *	/root/scrapywrapper/RunSpider.sh WeatherDisasterForecast
 35 9 * * *	/root/scrapywrapper/RunSpider.sh TcmMarketDailyPrice_zyctd
+35 9 * * *	/root/scrapywrapper/RunSpider.sh TcmMarketDailyPrice_kmzyw
+35 9 * * *	/root/scrapywrapper/RunSpider.sh TcmMarketDailyPrice_yaotong
 35 9 * * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginPrice_zyctd
-35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyReport_json
+35 9 * * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginPrice_kmzyw
+35 9 * * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginPrice_yaotong
 
+35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyReport_json
 35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyInfo
 35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicAgencyProfitForecast
 35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyAgencyRating
@@ -46,11 +50,12 @@
 
 35 9 7 * *	/root/scrapywrapper/RunSpider.sh CityAirQualityMonthly
 35 9 7 * *	/root/scrapywrapper/RunSpider.sh InaccurateAdvertisement
+35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmMarketMonthlyPrice_zyctd
 35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmMarketMonthlyPrice_kmzyw
 35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmMarketMonthlyPrice_yaotong
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmMarketMonthlyPrice_zyctd
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginMonthlyPrice_kmzyw
 35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginMonthlyPrice_zyctd
+35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginMonthlyPrice_kmzyw
+35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginMonthlyPrice_yaotong
 35 9 7 * *	/root/scrapywrapper/RunSpider.sh DrugBidInfo
 35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmTradingCompany
 35 9 7 * *	/root/scrapywrapper/RunSpider.sh TopTenShareHolder
