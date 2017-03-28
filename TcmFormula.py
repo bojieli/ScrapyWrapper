@@ -4,6 +4,7 @@ from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
 import base64
 import copy
+import re
 
 def remove_unknown_fields(meta):
 	new_meta = copy.copy(meta)
@@ -25,10 +26,12 @@ def parse_ingredients(text):
 	return l
 
 class ScrapyConfig(ScrapyWrapperConfig):
-	custom_settings = {
-		'DOWNLOAD_DELAY': 1,
-		'CONCURRENT_REQUESTS': 1,
-	}
+	#custom_settings = {
+	#	'DOWNLOAD_DELAY': 1,
+	#	'CONCURRENT_REQUESTS': 1,
+	#}
+
+	crawlera_enabled = True
 
 	def encode_url_id(self, url_id):
 		url_s = str(url_id)
@@ -40,15 +43,15 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		return base64.encodestring(enc_s).strip()
 
 	def url_gen(self):
-		for url_id in range(300, 600):
-			yield 'http://db.yaozh.com/fangji/' + self.encode_url_id(url_id) + '.html'
+		for url_id in range(1, 1000):
+			yield 'https://db.yaozh.com/fangji/' + self.encode_url_id(url_id) + '.html'
 
 	begin_urls = url_gen
 
 	steps = {
 		"begin": {
 			'req': {
-				'cookies': 'MEIQIA_EXTRA_TRACK_ID=a6452976bc9311e6b96b02fa39e25136; gr_user_id=a1c068f7-5995-45af-87ec-a7ff262d7430; pgv_pvi=1900213552; PHPSESSID=2rquhbdd6rk3m255sjabcuulj0; _user_=2rquhbdd6rk3m255sjabcuulj0; think_language=en-US; _gat=1; ad_index_dialog=1; _ga=GA1.2.1255801030.1481121571; yaozh_logintime=1484527746; yaozh_user=424196%09bojieli; _ga=GA1.3.1255801030.1481121571; Hm_lvt_65968db3ac154c3089d7f9a4cbb98c94=1482749665,1482959253,1483892989,1484527717; Hm_lpvt_65968db3ac154c3089d7f9a4cbb98c94=1484527736',
+				'cookies': 'MEIQIA_EXTRA_TRACK_ID=a6452976bc9311e6b96b02fa39e25136; gr_user_id=a1c068f7-5995-45af-87ec-a7ff262d7430; pgv_pvi=1900213552; think_language=en-US; PHPSESSID=2p4u7okge5606g9k4dbdq9s3t5; WAF_SESSION_ID=56096a322dee9843c913f79590e38fbf; _gat=1; _ga=GA1.2.1255801030.1481121571; yaozh_logintime=1490744695; yaozh_user=424196%09bojieli; yaozh_userId=424196; db_w_auth=405916%09bojieli; UtzD_f52b_saltkey=VOiff96t; UtzD_f52b_lastvisit=1490741096; UtzD_f52b_lastact=1490744696%09uc.php%09; UtzD_f52b_auth=64ccf0JUrQHJaiJVFtXqNM%2BooKQhDwhX8g%2BXZInqFtz%2FBp99vjos0vhhMqlsP%2B56EjSJmgajV6I81mFUbEXaC7OqE7I; _ga=GA1.3.1255801030.1481121571; Hm_lvt_65968db3ac154c3089d7f9a4cbb98c94=1490713941; Hm_lpvt_65968db3ac154c3089d7f9a4cbb98c94=1490715905',
 				'dont_filter': True
 			},
 			'res': [{
@@ -61,6 +64,10 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'next_step': 'begin'
 			}, {
 				'selector_regex': u'(您的操作过于频繁)',
+				'data_postprocessor': lambda _,meta: meta['$$url'],
+				'next_step': 'begin'
+			}, {
+				'selector_regex': u'(WAF_PROOF_OF_WORK_CHALLENGE)',
 				'data_postprocessor': lambda _,meta: meta['$$url'],
 				'next_step': 'begin'
 			}]
@@ -99,7 +106,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}],
 			'res': {
 				'selector_table_sibling': u'组成',
-				'selector': lambda text, meta: text.split(),
+				'selector': lambda text, meta: re.split(u'）? ?', text),
 				'strip_tags': True,
 				'next_step': 'ingredient'
 			}
@@ -120,9 +127,12 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector': lambda t,_: t.split(u'（')[0],
 				'required': True
 			}, {
+				'name': 'ProcessingMethod',
+				'selector_regex': u'（(.*)，'
+			}, {
 				'name': 'TcmContent',
-				'selector_regex': u'（(.*)）',
-				'data_type': 'float'
+				'selector_regex': u'（(.*)',
+				'data_postprocessor': lambda d,_: d.split(u'，')[-1]
 			}, {
 				'name': 'TcmID',
 				'reference': {
