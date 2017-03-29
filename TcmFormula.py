@@ -27,7 +27,7 @@ def parse_ingredients(text):
 
 class ScrapyConfig(ScrapyWrapperConfig):
 	custom_settings = {
-		'DOWNLOAD_DELAY': 1,
+		'DOWNLOAD_DELAY': 10,
 		'CONCURRENT_REQUESTS': 1,
 	}
 
