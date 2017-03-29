@@ -24,7 +24,7 @@ class ScrapyWrapperConfig():
 		'WEBDRIVER_OPTIONS': {
 		    'service_args': ['--debug=true', '--load-images=false', '--webdriver-loglevel=debug']
 		},
-		'USER_AGENT': "Mozilla/5.0 (Windows NT 6.2; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/27.0.1453.93 Safari/537.36"
+		'USER_AGENT': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36"
 	}
 
 	crawlera_apikey = 'c8a6eb2f7cab4450806b9ea73187391a'
