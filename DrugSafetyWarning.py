@@ -2,12 +2,18 @@
 # -*- coding:utf-8 -*-
 from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
+from urlparse import urljoin
+import sys
 
+base_url = "http://www.sda.gov.cn/WS01/"
 
 class ScrapyConfig(ScrapyWrapperConfig):
-	begin_urls = ["http://www.sda.gov.cn/WS01/CL1059/"]
+	begin_urls = ["CL1060/", "CL1061/", "CL1063/", "CL1064/"]
 	steps = {
 		"begin": {
+			'req': {
+				'url': lambda url, meta: urljoin(base_url, url) if url.startswith('CL') else url,
+			},
 			'res': [{
 				'selector_xpath': '//a/@href',
 				'selector_regex': '(\.\./CL[0-9]*/.*\.html)',
@@ -19,10 +25,16 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}]
 		},
 		"content": {
+			'fields': [{
+				'name': "ClassificationNumber",
+				'data_preprocessor': lambda _, meta: meta['$$referer'],
+				'selector_regex': 'CL([0-9]*)',
+				'data_postprocessor': lambda n, meta: '1' if n == '1060' else '2' if n == '1061' else '3' if n == '1063' else '4' if n == '1064' else None,
+			}],
 			'res': {
 				'selector_xpath': '/html/body/table[2]/tbody/tr/td/table',
-				'keep_html_tags': True,
-				'next_step': 'db'
+				'next_step': 'db',
+				'required': True
 			}
 		},
 		"db": {
@@ -48,10 +60,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_css': 'td.articlecontent3',
 				'strip_tags': False,
 				'download_images': True
-			}, {
-				'name': "ClassificationNumber",
-				'selector_css': 'td.articletitle3',
-				'data_postprocessor': lambda title, meta: '1' if u'不良反应通报' in title else '2' if u'警戒快讯' in title else '3' if u'不良反应基本常识' in title else '4' if u'滥用检测基本常识' else '0'
 			}
 			]
 		}
