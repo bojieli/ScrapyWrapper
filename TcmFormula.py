@@ -26,12 +26,10 @@ def parse_ingredients(text):
 	return l
 
 class ScrapyConfig(ScrapyWrapperConfig):
-	#custom_settings = {
-	#	'DOWNLOAD_DELAY': 1,
-	#	'CONCURRENT_REQUESTS': 1,
-	#}
-
-	crawlera_enabled = True
+	custom_settings = {
+		'DOWNLOAD_DELAY': 1,
+		'CONCURRENT_REQUESTS': 1,
+	}
 
 	def encode_url_id(self, url_id):
 		url_s = str(url_id)
