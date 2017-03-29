@@ -12,7 +12,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 	steps = {
 		"begin": {
 			'req': {
-				'url': lambda url, meta: urljoin(base_url, url)
+				'url': lambda url, meta: urljoin(base_url, url) if url.startswith('CL') else url,
 			},
 			'res': [{
 				'selector_xpath': '//a/@href',
@@ -25,6 +25,13 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}]
 		},
 		"content": {
+			'fields': [{
+				'name': "ClassificationNumber",
+				'data_preprocessor': lambda result, meta: meta['$$referer'],
+				'selector_regex': 'CL([0-9]*)',
+				'data_postprocessor': lambda n, meta: '1' if n == '1749' else '3' if n == '1750' else '2',
+				'required': True
+			}],
 			'res': {
 				'selector_xpath': '/html/body/table[2]/tbody/tr/td/table',
 				'next_step': 'db'
@@ -50,12 +57,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_css': 'td.articlecontent3',
 				'strip_tags': False,
 				'download_images': True
-			}, {
-				'name': "ClassificationNumber",
-				'data_preprocessor': lambda result, meta: meta['$$referer'],
-				'selector_regex': 'CL([0-9]*)',
-				'data_postprocessor': lambda n, meta: '1' if n == '1749' else '3' if n == '1750' else '2',
-				'required': True
 			}
 			]
 		}

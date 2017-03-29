@@ -30,6 +30,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'data_preprocessor': lambda _, meta: meta['$$referer'],
 				'selector_regex': 'CL([0-9]*)',
 				'data_postprocessor': lambda n, meta: '1' if n == '1060' else '2' if n == '1061' else '3' if n == '1063' else '4' if n == '1064' else None,
+				'required': True
 			}],
 			'res': {
 				'selector_xpath': '/html/body/table[2]/tbody/tr/td/table',
