@@ -41,7 +41,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'upsert': True,
 			'fields': [{
 				'name': "PublicationDate",
-				'selector_css': 'div.xj2',
+				'selector_regex': u'发布时间：([0-9-]*)',
 				'data_type': "Date",
 				'required': True
 			}, {
