@@ -46,7 +46,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db24": {
 			'type': "db",
 			'unique': ['PublicationDate', 'ForecastDate', 'Region'],
-			'upsert': False,
+			'upsert': True,
 			'table_name': "AirQualityForecast",
 			'fields': [{
 				'name': "PublicationDate",
@@ -89,13 +89,16 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'name': "PMTen",
 				'selector_json': 'PrimaryPollutant',
 				'data_postprocessor': lambda d, meta: '1' if 'PM10' in d else '0'
+			}, {
+				'name': "PrimaryPollutant",
+				'selector_json': 'PrimaryPollutant'
 			}
 			]
 		},
 		"db48": {
 			'type': "db",
 			'unique': ['PublicationDate', 'ForecastDate', 'Region'],
-			'upsert': False,
+			'upsert': True,
 			'table_name': "AirQualityForecast",
 			'fields': [{
 				'name': "PublicationDate",
@@ -138,13 +141,16 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'name': "PMTen",
 				'selector_json': 'Primary48Pollutant',
 				'data_postprocessor': lambda d, meta: '1' if 'PM10' in d else '0'
+			}, {
+				'name': "PrimaryPollutant",
+				'selector_json': 'Primary48Pollutant'
 			}
 			]
 		},
 		"db72": {
 			'type': "db",
 			'unique': ['PublicationDate', 'ForecastDate', 'Region'],
-			'upsert': False,
+			'upsert': True,
 			'table_name': "AirQualityForecast",
 			'fields': [{
 				'name': "PublicationDate",
@@ -187,6 +193,9 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'name': "PMTen",
 				'selector_json': 'Primary72Pollutant',
 				'data_postprocessor': lambda d, meta: '1' if 'PM10' in d else '0'
+			}, {
+				'name': "PrimaryPollutant",
+				'selector_json': 'Primary72Pollutant'
 			}
 			]
 		}

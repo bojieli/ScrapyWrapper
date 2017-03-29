@@ -31,7 +31,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "PublicCompanyCoreSubject",
-			'unique': ['CompanyID', 'Headline', 'ReportDate'],
+			'unique': ['CompanyID', 'ReportDate', 'SOrder'],
 			'upsert': True,
 			'fields': [{
 				'name': 'CompanyID',
@@ -48,10 +48,13 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': "DetailContent",
 				'selector_regex': '<font>.*</font>(.*)</p>',
-				'data_postprocessor': lambda d, meta: d.strip(),
-				'strip_tags': False,
-				'download_images': True,
+				#'data_postprocessor': lambda d, meta: d.strip(),
+				#'strip_tags': False,
+				#'download_images': True,
 				'required': True
+			}, {
+				'name': 'SOrder',
+				'selector': lambda _,meta: meta['$$record_count']
 			}, {
 				'name': "ReportDate",
 				'selector': lambda r, m: datetime.datetime.now().strftime('%Y-%m-%d')

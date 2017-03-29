@@ -109,7 +109,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': 'AffectedPopulation',
 				'selector_json': 'data.data',
-				'data_type': 'float'
+				'data_type': 'float',
+				'required': True
 			}]
 		}
 	}

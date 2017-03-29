@@ -42,7 +42,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'required': True
 			}, {
 				'name': "OperationReport",
-				'strip_tags': False,
+				'strip_tags': True,
+				'data_validator': lambda d,_: d.strip() != '-',
 				'required': True
 			}, {
 				'name': "ReportDate",
