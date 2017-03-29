@@ -876,10 +876,12 @@ class SpiderWrapper(scrapy.Spider):
 			if "reference" in res_conf:
 				reference_fields.append(res_conf)
 				continue
-			if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
-				result = res_conf.data_preprocessor(result, meta)
 
-			parsed = self._parse_record_field(res_conf, result, meta)
+			lresult = result
+			if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
+				lresult = res_conf.data_preprocessor(result, meta)
+
+			parsed = self._parse_record_field(res_conf, lresult, meta)
 
 			if "data_type" in res_conf:
 				if res_conf.data_type == "Date":
