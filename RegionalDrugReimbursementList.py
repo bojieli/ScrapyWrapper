@@ -54,7 +54,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "RegionalDrugReimbursementList",
-			'unique': ['Classification', 'DrugName', 'Region', 'DosageType'],
+			'unique': ['SerialNumber', 'DrugName', 'Region', 'DosageType'],
 			'upsert': True,
 			'fields': [{
 				'name': "DrugClassification",
@@ -72,7 +72,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_xpath': '//td[5]'
 			}, {
 				'name': "Classification",
-				'selector_xpath': '//td[1]'
+				'selector_xpath': '//td[2]'
 			}, {
 				'name': "DrugClassificationID",
 				'reference': {
