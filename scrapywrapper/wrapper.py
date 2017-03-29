@@ -1102,8 +1102,8 @@ class SpiderWrapper(scrapy.Spider):
 		count = 0
 		for result in results:
 			# add counter to metadata
-			result[2]['$$record_count'] = count
 			count += 1
+			result[2]['$$record_count'] = count
 
 			if len(result) < 2 or type(result[1]) is None or result[1] == 'end':
 				continue
