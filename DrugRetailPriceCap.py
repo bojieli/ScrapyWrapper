@@ -5,7 +5,7 @@ from scrapywrapper.config import ScrapyWrapperConfig
 
 class ScrapyConfig(ScrapyWrapperConfig):
 	def url_generator(self):
-		for i in range(1,770000):
+		for i in range(770000,1,-1):
 			yield 'https://db.yaozh.com/yaopinjiage/' + str(i) + '.html'
 
 	crawlera_enabled = True
@@ -45,7 +45,6 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'name': "DrugID",
 				'dependencies': ['$$DrugID_exact', '$$DrugID_name_only'],
 				'selector': lambda _,meta: meta['$$DrugID_exact'] if meta['$$DrugID_exact'] else meta['$$DrugID_name_only'],
-				'required': True
 			}, {
 				'name': "DrugName",
 				'selector_table_sibling': u"药品名称",

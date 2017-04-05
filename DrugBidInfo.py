@@ -7,7 +7,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 	#crawlera_enabled = True
 
 	def url_generator(self):
-		for i in range(3605562,0,-1):
+		for i in range(3700000,0,-1):
 			yield 'http://db.yaozh.com/api/index.php/Home/index/yaopinzhongbiao/id/' + str(i)
 
 	begin_urls = url_generator
@@ -28,18 +28,29 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "DrugBidInfo",
-			'unique': ['DrugGenericName', 'DrugManufacturerName'],
+			'unique': ['SourceID'],
 			'upsert': True,
 			'fields': [
 			{
-				'name': "DrugID",
+				'name': "$$DrugID_exact",
 				'reference': {
 					'table': "TB_Resources_MedicineMadeInChina",
 					'fields': ["DrugGenericName", "DrugManufacturerName"],
 					'remote_fields': ["CnName", "ProductionUnit"],
-					'remote_id_field': 'ResID',
-					'cache': False
+					'remote_id_field': 'ResID'
 				}
+			}, {
+				'name': "$$DrugID_name_only",
+				'reference': {
+					'table': "TB_Resources_MedicineMadeInChina",
+					'fields': ["DrugGenericName"],
+					'remote_fields': ["CnName"],
+					'remote_id_field': 'ResID'
+				}
+			}, {
+				'name': "DrugID",
+				'dependencies': ['$$DrugID_exact', '$$DrugID_name_only'],
+				'selector': lambda _,meta: meta['$$DrugID_exact'] if meta['$$DrugID_exact'] else meta['$$DrugID_name_only'],
 			}, {
 				'name': "DrugGenericName",
 				'selector_json': "data.me_name",
@@ -95,6 +106,12 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': "SourceDocumentUrl",
 				'selector_json': "data.xq_source"
+			}, {
+				'name': 'SourceID',
+				'data_preprocessor': lambda _,meta: meta['$$url'],
+				'selector_regex': '/id/([0-9]*)',
+				'data_type': 'int',
+				'required': True
 			}]
 		}
 	}
