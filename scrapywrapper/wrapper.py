@@ -24,6 +24,7 @@ import copy
 from scrapy_webdriver.http import WebdriverRequest
 import os
 import urllib2
+from collections import deque
 
 utf8_parser = lxml.etree.HTMLParser(encoding='utf-8')
 
@@ -649,6 +650,7 @@ class SpiderWrapper(scrapy.Spider):
 
 	def _parse_reference_field(self, res_conf, record):
 		local_field = res_conf.name
+		record[local_field] = None
 		remote_table = res_conf.reference.table
 		remote_id_field = res_conf.reference.remote_id_field if "remote_id_field" in res_conf.reference else "ID"
 		if "remote_field" in res_conf.reference:
@@ -857,12 +859,93 @@ class SpiderWrapper(scrapy.Spider):
 			meta['$$image_urls'] = []
 		meta['$$image_urls'].extend(image_urls)
 		return response_text
+	
+	def _parse_db_field(self, res_conf, result, meta):
+		if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
+			result = res_conf.data_preprocessor(result, meta)
+
+		parsed = self._parse_record_field(res_conf, result, meta)
+
+		if "data_type" in res_conf:
+			if res_conf.data_type == "Date":
+				parsed = self._parse_date(parsed)
+			elif res_conf.data_type == "float":
+				parsed = self._parse_float(parsed)
+			elif res_conf.data_type == "int":
+				parsed = self._parse_int(parsed)
+			elif res_conf.data_type == "percentage":
+				try:
+					m = re.search('([0-9.-][0-9.]*)%', parsed.replace(',', ''))
+					parsed = float(m.group(1))
+				except:
+					parsed = None
+
+		if type(parsed) is not str and type(parsed) is not unicode and parsed is not None:
+			parsed = str(parsed)
+		if "data_validator" in res_conf and callable(res_conf.data_validator):
+			if not res_conf.data_validator(parsed, meta):
+				#print('Record parse error: field ' + res_conf.name + ' failed data validator (value "' + parsed + '")')
+				#print('Full record: ' + result)
+				return False
+		if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
+			parsed = res_conf.data_postprocessor(parsed, meta)
+		if "download_images" in res_conf and res_conf.download_images:
+			parsed = self._download_images_from_html(parsed, meta)
+		if "required" in res_conf and res_conf.required:
+			if parsed == None or len(parsed) == 0:
+				if not "mute_warnings" in res_conf:
+					print('Record parse error: required field ' + res_conf.name + ' does not exist')
+					print('Full record: ')
+					try:
+						print(repr(result)[:1000])
+					except:
+						print(result.encode('utf-8')[:10000])
+				return False
+		meta[res_conf.name] = parsed
+		return True
+
+	def _order_fields_by_dependency(self, confs):
+		dep_graph = {}
+		for conf in confs:
+			dep_graph[conf.name] = set()
+			if "reference" in conf:
+				if "fields" in conf.reference:
+					dep_graph[conf.name].update(set(conf.reference.fields))
+				elif "field" in conf.reference:
+					dep_graph[conf.name].add(conf.reference.field)
+			if "dependencies" in conf:
+				dep_graph[conf.name].update(set(conf.dependencies))
+
+		GRAY, BLACK = 0, 1
+		enter = set(dep_graph)
+		state = {}
+		ordered = []
+
+		def dfs(node):
+			state[node] = GRAY
+			for k in dep_graph.get(node, ()):
+				sk = state.get(k, None)
+				if sk == GRAY:
+					raise ValueError("Circular dependency in reference conf!")
+				if sk == BLACK:
+					continue
+				enter.discard(k)
+				dfs(k)
+			ordered.append(node)
+			state[node] = BLACK
+
+		while enter:
+			dfs(enter.pop())
+
+		confs_dict = {}
+		for conf in confs:
+			confs_dict[conf.name] = conf
+		return [confs_dict[name] for name in ordered]
 
 	def _parse_db_record(self, conf, url, result, curr_step, meta=None):
 		if "preprocessor" in conf and callable(conf.preprocessor):
 			(url, result, meta) = conf.preprocessor(url, result, meta)
 
-		reference_fields = []
 		# populate record with meta
 		if type(meta) is not dict:
 			meta = {}
@@ -872,61 +955,22 @@ class SpiderWrapper(scrapy.Spider):
 
 		if "fields" not in conf:
 			conf.fields = []
+
+		if "$$dependency_ordered" not in conf:
+			conf.fields = self._order_fields_by_dependency(conf.fields)
+			conf['$$dependency_ordered'] = True
+
 		for res_conf in conf.fields:
 			if "reference" in res_conf:
-				reference_fields.append(res_conf)
-				continue
-
-			lresult = result
-			if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
-				lresult = res_conf.data_preprocessor(result, meta)
-
-			parsed = self._parse_record_field(res_conf, lresult, meta)
-
-			if "data_type" in res_conf:
-				if res_conf.data_type == "Date":
-					parsed = self._parse_date(parsed)
-				elif res_conf.data_type == "float":
-					parsed = self._parse_float(parsed)
-				elif res_conf.data_type == "int":
-					parsed = self._parse_int(parsed)
-				elif res_conf.data_type == "percentage":
-					try:
-						m = re.search('([0-9.-][0-9.]*)%', parsed.replace(',', ''))
-						parsed = float(m.group(1))
-					except:
-						parsed = None
-
-			if type(parsed) is not str and type(parsed) is not unicode and parsed is not None:
-				parsed = str(parsed)
-			if "data_validator" in res_conf and callable(res_conf.data_validator):
-				if not res_conf.data_validator(parsed, meta):
-					#print('Record parse error: field ' + res_conf.name + ' failed data validator (value "' + parsed + '")')
-					#print('Full record: ' + result)
+				status = self._parse_reference_field(res_conf, meta)
+				if status == False and "required" in res_conf and res_conf.required:
+					print('Record parse error: required reference field ' + res_conf.name + ' not matched (value "' + meta[res_conf.reference.field].encode('utf-8') + '")')
+					print('Full record: ')
+					print(result.encode('utf-8')[:10000])
 					return
-			if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
-				parsed = res_conf.data_postprocessor(parsed, meta)
-			if "download_images" in res_conf and res_conf.download_images:
-				parsed = self._download_images_from_html(parsed, meta)
-			if "required" in res_conf and res_conf.required:
-				if parsed == None or len(parsed) == 0:
-					if not "mute_warnings" in res_conf:
-						print('Record parse error: required field ' + res_conf.name + ' does not exist')
-						print('Full record: ')
-						try:
-							print(repr(result)[:1000])
-						except:
-							print(result.encode('utf-8')[:10000])
+			else: # normal field
+				if not self._parse_db_field(res_conf, result, meta):
 					return
-			meta[res_conf.name] = parsed
-
-		for res_conf in reference_fields:
-			status = self._parse_reference_field(res_conf, meta)
-			if status == False and "required" in res_conf and res_conf.required:
-				print('Record parse error: required reference field ' + res_conf.name + ' not matched (value "' + meta[res_conf.reference.field].encode('utf-8') + '")')
-				print('Full record: ')
-				print(result.encode('utf-8')[:10000])
-				return
 
 		if "postprocessor" in conf and callable(conf.postprocessor):
 			meta = conf.postprocessor(meta)
