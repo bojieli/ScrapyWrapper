@@ -5,34 +5,28 @@ from scrapywrapper.config import ScrapyWrapperConfig
 
 class ScrapyConfig(ScrapyWrapperConfig):
 	def url_generator(self):
-		for i in range(769580,0,-1):
-			#yield 'http://db.yaozh.com/api/index.php/Home/index/yaopinjiage/id/' + str(i)
-			yield 'http://128.199.95.148:9574/yaopinjiage/id/' + str(i)
+		for i in range(1,770000):
+			yield 'https://db.yaozh.com/yaopinjiage/' + str(i) + '.html'
 
+	crawlera_enabled = True
 
 	begin_urls = url_generator
-	#begin_urls = ["http://db.yaozh.com/api/index.php/Home/index/yaopinzhongbiao/id/3542343"]
 	steps = {
 		"begin": {
-			'req': {
-				'method': "post",
-				'post_formdata': {
-					"access_token": "5555f086252b2c47debad752b5272bb9",
-					"client": "Android"
-				}
-			},
 			'res': {
-				'next_step': 'db'
+				'selector_css': 'div.body',
+				'next_step': 'db',
+				'required': True
 			}
 		},
 		"db": {
 			'type': "db",
 			'table_name': "DrugRetailPriceCap",
-			'unique': ['DrugName', 'DrugManufacturerName'],
+			'unique': ['SourceID'],
 			'upsert': True,
 			'fields': [
 			{
-				'name': "DrugID",
+				'name': "$$DrugID_exact",
 				'reference': {
 					'table': "TB_Resources_MedicineMadeInChina",
 					'fields': ["DrugName", "DrugManufacturerName"],
@@ -40,35 +34,49 @@ class ScrapyConfig(ScrapyWrapperConfig):
 					'remote_id_field': 'ResID'
 				}
 			}, {
+				'name': "$$DrugID_name_only",
+				'reference': {
+					'table': "TB_Resources_MedicineMadeInChina",
+					'fields': ["DrugName"],
+					'remote_fields': ["CnName"],
+					'remote_id_field': 'ResID'
+				}
+			}, {
+				'name': "DrugID",
+				'dependencies': ['$$DrugID_exact', '$$DrugID_name_only'],
+				'selector': lambda _,meta: meta['$$DrugID_exact'] if meta['$$DrugID_exact'] else meta['$$DrugID_name_only'],
+				'required': True
+			}, {
 				'name': "DrugName",
-				'selector_json': u"药品名称",
+				'selector_table_sibling': u"药品名称",
 				'required': True
 			}, {
 				'name': "PriceSettingRegion",
-				'selector_json': u"定价地区"
+				'selector_table_sibling': u"定价地区"
 			}, {
 				'name': "DosageType",
-				'selector_json': u"剂型"
+				'selector_table_sibling': u"剂型"
 			}, {
 				'name': "Specification",
-				'selector_json': u"规格"
+				'selector_table_sibling': u"规格"
 			}, {
 				'name': "UnitOfMeasurement",
-				'selector_json': u"单位"
+				'selector_table_sibling': u"单位"
 			}, {
 				'name': "RetailPriceCap",
-				'selector_json': u"最高零售价(元)",
+				'selector_table_sibling': u"最高零售价(元)",
 				'data_type': 'float'
 			}, {
 				'name': "DrugManufacturerName",
-				'selector_json': u"生产企业"
+				'selector_table_sibling': u"生产企业"
 			}, {
 				'name': "CommentInfo",
-				'selector_json': u"备注"
+				'selector_table_sibling': u"备注"
 			}, {
 				'name': "EffectiveDate",
-				'selector_json': u"执行日期",
-				'data_type': 'Date'
+				'selector_table_sibling': u"执行日期",
+				'data_type': 'Date',
+				'required': True
 			}, {
 				'name': "RegionID",
 				'reference': {
@@ -80,7 +88,14 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				}
 			}, {
 				'name': "DocumentNumber",
-				'selector_json': u"文件号"
+				'selector_table_sibling': u"文件号",
+				'required': True
+			}, {
+				'name': 'SourceID',
+				'data_preprocessor': lambda _,meta: meta['$$url'],
+				'selector_regex': '([0-9]*)\.html',
+				'data_type': 'int',
+				'required': True
 			}]
 		}
 	}
