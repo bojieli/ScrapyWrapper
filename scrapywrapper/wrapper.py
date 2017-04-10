@@ -219,6 +219,8 @@ class SpiderWrapper(scrapy.Spider):
 		c.url_table = AttrDict(c.url_table)
 		c.steps = self._to_attr_dict(c.steps)
 		self.reference_cache = {}
+		if type(c.status_report_batch) is not int:
+			raise "status_report_batch should be an integer"
 
 	def _init_db(self):
 		if not self.config.db:
@@ -1211,9 +1213,9 @@ class SpiderWrapper(scrapy.Spider):
 
 	def report_status(self, force=False):
 		self.__accumulative_report_counter += 1
-		if not force and self.__accumulative_report_counter < 10:
+		if not force and self.__accumulative_report_counter < self.config.status_report_batch:
 			return
-		if self.__accumulative_report_counter == 10:
+		if self.__accumulative_report_counter == self.config.status_report_batch:
 			self.__accumulative_report_counter = 0
 		try:
 			urllib2.urlopen('http://127.0.0.1:8080/task/' + self.name + '/update_status', urllib.urlencode(self.counter)).read()

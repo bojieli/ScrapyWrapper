@@ -62,3 +62,4 @@ class ScrapyWrapperConfig():
 	default_guid_field = "ID"
 	check_url_exist_before_crawl = False
 	on_exist_update = True
+	status_report_batch = 50
