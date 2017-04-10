@@ -1286,10 +1286,10 @@ class SpiderWrapper(scrapy.Spider):
 		return new_row
 
 	def _insert_db_record(self, conf, url, row):
-		if not self.counter.__total_records_reported:
+		if not self.__total_records_reported:
 			self.counter.total_records = self.get_total_records(conf.table_name)
 			self.report_status(force=True)
-			self.counter.__total_records_reported = True
+			self.__total_records_reported = True
 		self.counter.total_records += 1
 		self.counter.new_records += 1
 		self.report_status()
