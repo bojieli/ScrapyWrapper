@@ -24,14 +24,36 @@ import copy
 from scrapy_webdriver.http import WebdriverRequest
 import os
 import urllib2
+import urllib
 from collections import deque
+from scrapy import signals
+from scrapy.xlib.pydispatch import dispatcher
 
 utf8_parser = lxml.etree.HTMLParser(encoding='utf-8')
 
 class SpiderWrapper(scrapy.Spider):
+	def spider_closed(self, spider):
+		print('Report spider status for the last time...')
+		# mark as complete
+		self.counter.status = 1
+		self.report_status(force=True)
+
 	def start_requests(self):
 		self._check_config()
 		self._init_db()
+		self.__total_records_reported = False
+		self.__accumulative_report_counter = 0
+		self.counter = AttrDict({
+		    'status': 0,
+		    'crawled_webpages': 0,
+		    'total_records': 0,
+		    'new_records': 0,
+		    'updated_records': 0,
+		    'saved_images': 0,
+		    'error_count': 0
+		})
+		dispatcher.connect(self.spider_closed, signals.spider_closed)
+
 		if callable(self.config.begin_urls):
 			for url in self.config.begin_urls():
 				for req in self._build_request(url, "begin"):
@@ -447,6 +469,8 @@ class SpiderWrapper(scrapy.Spider):
 				print('Record parse error: no results matching selector ' + str(res_conf))
 				print('Full record: ')
 				print(repr(response_text)[:10000])
+				self.counter.error_count += 1
+				self.report_status(force=True)
 
 		if 'limit' in res_conf and len(results) > res_conf.limit:
 			results = results[:res_conf.limit]
@@ -900,6 +924,8 @@ class SpiderWrapper(scrapy.Spider):
 						print(repr(result)[:1000])
 					except:
 						print(result.encode('utf-8')[:10000])
+					self.counter.error_count += 1
+					self.report_status(force=True)
 				return False
 		meta[res_conf.name] = parsed
 		return True
@@ -967,6 +993,8 @@ class SpiderWrapper(scrapy.Spider):
 					print('Record parse error: required reference field ' + res_conf.name + ' not matched (value "' + meta[res_conf.reference.field].encode('utf-8') + '")')
 					print('Full record: ')
 					print(result.encode('utf-8')[:10000])
+					self.counter.error_count += 1
+					self.report_status(force=True)
 					return
 			else: # normal field
 				if not self._parse_db_field(res_conf, result, meta):
@@ -1050,6 +1078,9 @@ class SpiderWrapper(scrapy.Spider):
 		f.close()
 
 	def _save_file_record(self, response):
+		self.counter.saved_images += 1
+		self.report_status()
+
 		conf = self.config.file_storage
 		file_uuid = str(uuid.uuid4())
 		file_dir = str(datetime.date.today().year) + '/' + str(datetime.date.today().month)
@@ -1178,8 +1209,21 @@ class SpiderWrapper(scrapy.Spider):
 			else:
 				raise scrapy.exceptions.CloseSpider('undefined step type ' + step.config.type)
 
+	def report_status(self, force=False):
+		self.__accumulative_report_counter += 1
+		if not force and self.__accumulative_report_counter < 10:
+			return
+		if self.__accumulative_report_counter == 10:
+			self.__accumulative_report_counter = 0
+		try:
+			urllib2.urlopen('http://127.0.0.1:8080/task/' + self.name + '/update_status', urllib.urlencode(self.counter)).read()
+		except Exception as e:
+			print(e)
 
 	def _http_request_callback(self, response):
+		self.counter.crawled_webpages += 1
+		self.report_status()
+
 		step_conf = self.config.steps[response.meta['$$step']]
 		results = []
 		if "res" in step_conf:
@@ -1217,6 +1261,13 @@ class SpiderWrapper(scrapy.Spider):
 		print(url_row[self.config.url_table.time_field] + " [" + self.name + "] " + action + " one db record to table " + conf.table_name + " (URL: " + url + " )")
 
 	def _update_db_record(self, conf, guid, url, row):
+		if not self.__total_records_reported:
+			self.counter.total_records = self.get_total_records(conf.table_name)
+			self.report_status(force=True)
+			self.__total_records_reported = True
+		self.counter.updated_records += 1
+		self.report_status()
+
 		if "guid_field" not in conf:
 			conf.guid_field = self.config.default_guid_field
 		update_fields = [ field + ' = %s' for field in row ]
@@ -1233,6 +1284,14 @@ class SpiderWrapper(scrapy.Spider):
 		return new_row
 
 	def _insert_db_record(self, conf, url, row):
+		if not self.counter.__total_records_reported:
+			self.counter.total_records = self.get_total_records(conf.table_name)
+			self.report_status(force=True)
+			self.counter.__total_records_reported = True
+		self.counter.total_records += 1
+		self.counter.new_records += 1
+		self.report_status()
+
 		if "guid_field" not in conf:
 			conf.guid_field = self.config.default_guid_field
 		# data table
@@ -1263,6 +1322,14 @@ class SpiderWrapper(scrapy.Spider):
 	def insert_one_with_type(self, table_name, fields, value_types, table_data):
 		self.insert_many_with_type(table_name, fields, value_types, [table_data])
 
+	def get_total_records(self, table_name):
+		try:
+			self.cursor.execute('SELECT COUNT(*) as cnt FROM ' + table_name)
+			for row in self.cursor:
+				print('Total records in table ' + table_name + ' : ' + str(row['cnt']))
+				return int(row['cnt'])
+		except Exception as e:
+			print(e)
 
 
 def SpiderFactory(config, module_name):

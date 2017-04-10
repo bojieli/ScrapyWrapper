@@ -7,4 +7,5 @@ cssselect
 slimit
 selenium
 demjson
+pycurl
 https://github.com/sosign/scrapy-webdriver/archive/master.zip
