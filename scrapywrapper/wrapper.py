@@ -850,7 +850,7 @@ class SpiderWrapper(scrapy.Spider):
 			yield str(m)
 
 		for m in doc.xpath('//a/@href'):
-			re_m = re.search('\.(jpg|png|gif|bmp)$', str(m))
+			re_m = re.search('\.(jpg|png|gif|bmp|doc|docx|xls|xlsx|ppt|pptx|zip|rar)$', str(m))
 			if re_m:
 				yield str(m)
 
