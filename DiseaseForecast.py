@@ -50,7 +50,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'required': True
 			}, {
 				'name': "DetailContent",
-				'selector_css': 'div.zh',
+				'selector_css': 'div.TRS_Editor',
 				'required': True,
 				'strip_tags': False
 			}]

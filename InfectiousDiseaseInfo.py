@@ -99,7 +99,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'data_type': 'int'
 			}, {
 				'name': 'SOrder',
-				'selector': get_ordering,
+				'selector': lambda _,meta: meta['$$record_count'],
 				'required': True
 			}, {
 				'name': '$$remove_useless',

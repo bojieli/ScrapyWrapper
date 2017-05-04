@@ -81,7 +81,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_json': u'单季度\\.净利润(元)', 'name': 'QuarterlyNetProfit',
 				'data_type': 'float'
 			}, {
-				'selector_json': u'季度\\.归属母公司股东的净利润(元)', 'name': 'QuarterlyNetProfitParentCompany',
+				'selector_json': u'单季度\\.归属母公司股东的净利润(元)', 'name': 'QuarterlyNetProfitParentCompany',
 				'data_type': 'float'
 			}, {
 				'selector_json': u'单季度\\.经营活动产生的现金流量(元)', 'name': 'QuarterlyOperatingCashFlow',

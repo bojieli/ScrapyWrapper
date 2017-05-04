@@ -12,7 +12,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 	steps = {
 		"begin": {
 			'req': {
-				'url': lambda url, meta: urljoin(base_url, url) if url.startswith('CL') else url,
+				'url': lambda url, meta: urljoin(base_url, url)
 			},
 			'res': [{
 				'selector_xpath': '//a/@href',

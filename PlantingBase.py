@@ -78,11 +78,11 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_json': 'HasGAP'
 			}, {
 				'name': 'TotalProductionVolume',
-				'selector_json': 'UnitProduction',
+				'selector_json': 'Area',
 				'data_type': 'float'
 			}, {
 				'name': 'ProductionPerHectare',
-				'selector_json': 'Area',
+				'selector_json': 'UnitProduction',
 				'data_type': 'float'
 			}, {
 				'name': 'TcmPrice',
