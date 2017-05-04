@@ -477,6 +477,13 @@ class SpiderWrapper(scrapy.Spider):
 		if 'limit' in res_conf and len(results) > res_conf.limit:
 			results = results[:res_conf.limit]
 
+		if 'debug' in res_conf:
+		    print('======== DEBUG Parse res config ======')
+		    print(res_conf)
+		    print('-------- DEBUG Parse res result ------')
+		    print(repr(results))
+		    print('======== END DEBUG Parse res ======')
+
 		return results
 
 	def _mangle_text_results(self, text_results, res_conf, meta):
@@ -520,14 +527,18 @@ class SpiderWrapper(scrapy.Spider):
 				body = response.body
 
 		if '$$http_debug' in response.meta and response.meta['$$http_debug']:
-			print('----------------')
-			print(response.url)
+			print('======= DEBUG HTTP request =========')
+			print('URL: ' + response.url)
 			try:
-				print(response.request.body)
+				print(response.request.body.encode('utf-8'))
 			except:
-				print(response.request)
-			print(body)
-			print('================')
+				print(repr(response.request.body))
+			print('------- DEBUG HTTP response ---------')
+			try:
+				print(body.encode('utf-8'))
+			except:
+				print(repr(body))
+			print('======= END DEBUG HTTP =========')
 
 		return self._parse_and_mangle_text_response(body, res_conf, meta)
 
@@ -672,6 +683,17 @@ class SpiderWrapper(scrapy.Spider):
 				except:
 					result = unicode(result)
 			result = result.strip()
+
+		if 'debug' in res_conf:
+			print('======== DEBUG Parse field config ======')
+			print(res_conf)
+			print('-------- DEBUG Parse field result ------')
+			try:
+			    print(result.encode('utf-8'))
+			except:
+			    print(repr(result))
+			print('======== END DEBUG Parse field ======')
+
 		return result
 
 	def _parse_reference_field(self, res_conf, record):
@@ -1277,6 +1299,14 @@ class SpiderWrapper(scrapy.Spider):
 		update_data = [ row[field] if field in row else '' for field in row ]
 		self.cursor.execute("UPDATE " + conf.table_name + " SET " + ','.join(update_fields) + " WHERE " + conf.guid_field + " = %s", tuple(update_data + [guid]))
 		self._insert_url_table(conf, guid, url, action="Updated")
+
+		if 'debug' in conf:
+			print('======== DEBUG Database operation ======')
+			print('Table: ' + conf.table_name)
+			print('GUID: ' + str(guid))
+			print('URL: ' + url)
+			print('Data: ' + repr(row))
+			print('======== END DEBUG database operation ======')
 		return guid
 
 	def _remove_metadata_fields(self, row):
