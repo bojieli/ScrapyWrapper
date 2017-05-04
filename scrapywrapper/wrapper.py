@@ -968,7 +968,7 @@ class SpiderWrapper(scrapy.Spider):
 		confs_dict = {}
 		for conf in confs:
 			confs_dict[conf.name] = conf
-		return [confs_dict[name] for name in ordered]
+		return [confs_dict[name] for name in ordered if name in confs_dict]
 
 	def _parse_db_record(self, conf, url, result, curr_step, meta=None):
 		if "preprocessor" in conf and callable(conf.preprocessor):
@@ -1049,7 +1049,8 @@ class SpiderWrapper(scrapy.Spider):
 			if self.config.file_storage.basedir:
 				self.ftp_conn.mkd(self.config.file_storage.basedir)
 				self.ftp_conn.cwd(self.config.file_storage.basedir)
-			self.ftp_conn.set_pasv(True)
+            # do not use PASV mode due to server firewall
+			self.ftp_conn.set_pasv(False)
 
 		try:
 			self.ftp_conn.storbinary('STOR ' + filename, data_stream)
