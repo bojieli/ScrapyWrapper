@@ -53,13 +53,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'required': True
 			}, {
 				'name': "ProvinceID",
-				'reference': {
-					'field': 'Province',
-					'table': 'TB_Addresses',
-					'remote_field': 'Name',
-					'remote_id_field': 'PID',
-					'match': 'lpm'
-				}
+				'reference': { 'field': 'Province', 'match': 'address' }
 			}, {
 				'name': "Province",
 				'selector_json': 'BaseName',

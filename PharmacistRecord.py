@@ -44,12 +44,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_table_sibling': u'所在省份'
 			}, {
 				'name': "ProvinceID",
-				'reference': {
-					'field': 'ResidingProvince',
-					'table': 'TB_Addresses',
-					'remote_field': 'Name',
-					'remote_id_field': 'PID'
-				}
+				'reference': { 'field': 'ResidingProvince', 'match': 'address' }
 			}, {
 				'name': "CertificateNumber",
 				'selector_table_sibling': u'资格证号',

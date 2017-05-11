@@ -56,13 +56,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_regex': u'注册地址：([^<]*)<br'
 			}, {
 				'name': "AddressID",
-				'reference': {
-					'field': 'RegistrationAddress',
-					'table': 'TB_Addresses',
-					'remote_field': 'Name',
-					'remote_id_field': 'PID',
-					'match': 'lpm'
-				}
+				'reference': { 'field': 'RegistrationAddress', 'match': 'address' }
 			}, {
 				'name': "PlantationType",
 				'selector_regex': u'种植品种：([^<]*)<br'

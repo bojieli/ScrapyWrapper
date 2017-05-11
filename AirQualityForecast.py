@@ -58,7 +58,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'data_type': 'Date'
 			}, {
 				'name': "RegionID",
-				'reference': { 'field': 'Region', 'table': 'TB_Addresses', 'remote_field': 'Name', 'remote_id_field': 'PID', 'match': 'lpm' }
+				'reference': { 'field': 'Region', 'match': 'address' }
 			}, {
 				'name': "Region",
 				'selector_json': 'Name',
@@ -110,7 +110,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'data_type': 'Date'
 			}, {
 				'name': "RegionID",
-				'reference': { 'field': 'Region', 'table': 'TB_Addresses', 'remote_field': 'Name', 'remote_id_field': 'PID', 'match': 'lpm' }
+				'reference': { 'field': 'Region', 'match': 'address' }
 			}, {
 				'name': "Region",
 				'selector_json': 'Name',
@@ -162,7 +162,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'data_type': 'Date'
 			}, {
 				'name': "RegionID",
-				'reference': { 'field': 'Region', 'table': 'TB_Addresses', 'remote_field': 'Name', 'remote_id_field': 'PID', 'match': 'lpm' }
+				'reference': { 'field': 'Region', 'match': 'address' }
 			}, {
 				'name': "Region",
 				'selector_json': 'Name',

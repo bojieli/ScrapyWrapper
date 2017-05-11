@@ -62,13 +62,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'required': True
 			}, {
 				'name': "LocationID",
-				'reference': {
-					'field': 'PracticeLocation',
-					'table': 'TB_Addresses',
-					'remote_field': 'Name',
-					'remote_id_field': 'PID',
-					'match': 'lpm'
-				}
+				'reference': { 'field': 'PracticeLocation', 'match': 'address' }
 			}
 			]
 		}

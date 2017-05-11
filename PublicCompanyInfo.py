@@ -94,13 +94,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			    'selector_table_sibling_contains': u'区域'
 			}, {
 			    'name': "RegionID",
-			    'reference': {
-					'table': 'TB_Addresses',
-					'field': 'Region',
-					'remote_field': 'Name',
-					'remote_id_field': 'PID',
-					'match': 'prefix'
-				},
+			    'reference': { 'field': 'Region', 'match': 'address' },
 				'required': True
 			}, {
 			    'name': "PostalCode",

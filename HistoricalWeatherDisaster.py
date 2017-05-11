@@ -40,13 +40,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_json': 'County',
 			}, {
 				'name': 'RegionID',
-				'reference': {
-					'field': '$$City',
-					'table': 'TB_Addresses',
-					'remote_field': 'Name',
-					'remote_id_field': 'PID',
-					'match': 'lpm'
-				}
+				'reference': { 'field': '$$City', 'match': 'address' }
 			}, {
 				'name': 'Region',
 				'selector': lambda _, meta: meta['$$Province'] + meta['$$City'] + meta['$$County'],

@@ -43,13 +43,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'required': True
 			}, {
 				'name': "RegionID",
-				'reference': {
-					'field': 'Region',
-					'table': 'TB_Addresses',
-					'remote_field': 'Name',
-					'remote_id_field': 'PID',
-					'match': 'lpm'
-				}
+				'reference': { 'field': 'Region', 'match': 'address' }
 			}, {
 				'name': "Region",
 				'selector': lambda d, meta: json.loads(d)[0],

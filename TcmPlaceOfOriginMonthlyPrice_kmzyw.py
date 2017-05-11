@@ -81,7 +81,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'required': True
 			}, {
 				'name': "PlaceOfOriginID",
-				'reference': { 'field': 'PlaceOfOrigin', 'table': 'TB_Addresses', 'remote_field': 'Name', 'remote_id_field': 'PID', 'match': 'lpm' }
+				'reference': { 'field': 'PlaceOfOrigin', 'match': 'address' }
 			}]
 		},
 		"year_price": {

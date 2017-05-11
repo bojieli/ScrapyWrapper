@@ -38,7 +38,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'upsert': True,
 			'fields': [{
 				'name': "RegionID",
-				'reference': { 'field': 'HospitalName', 'table': 'TB_Addresses', 'remote_field': 'Name', 'remote_id_field': 'PID', 'match': 'lpm' }
+				'reference': { 'field': 'HospitalName', 'match': 'address' }
 			}, {
 				'name': "HospitalName",
 				'selector_table_sibling': u'医院名称：',

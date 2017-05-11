@@ -21,71 +21,78 @@
 # 
 # m h  dom mon dow   command
 
-35 9 * * *	/root/scrapywrapper/RunSpider.sh AirQualityForecast
-35 9 * * *	/root/scrapywrapper/RunSpider.sh WeatherDisasterForecast
-35 9 * * *	/root/scrapywrapper/RunSpider.sh TcmMarketDailyPrice_zyctd
-35 9 * * *	/root/scrapywrapper/RunSpider.sh TcmMarketDailyPrice_kmzyw
-35 9 * * *	/root/scrapywrapper/RunSpider.sh TcmMarketDailyPrice_yaotong
-35 9 * * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginPrice_zyctd
-35 9 * * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginPrice_kmzyw
-35 9 * * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginPrice_yaotong
+15 16 * * *	/root/scrapywrapper/RunSpider.sh AirQualityForecast
+15 16 * * *	/root/scrapywrapper/RunSpider.sh WeatherDisasterForecast
+15 16 * * *	/root/scrapywrapper/RunSpider.sh TcmMarketDailyPrice_zyctd
+15 16 * * *	/root/scrapywrapper/RunSpider.sh TcmMarketDailyPrice_kmzyw
+15 16 * * *	/root/scrapywrapper/RunSpider.sh TcmMarketDailyPrice_yaotong
+15 16 * * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginPrice_zyctd
+15 16 * * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginPrice_kmzyw
+15 16 * * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginPrice_yaotong
 
-35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyReport_json
-35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyInfo
-35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicAgencyProfitForecast
-35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyAgencyRating
-35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyCoreBusiness
-35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyCoreSubject
-35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyKeyNumber
-35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyOperationReport
-35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyProfitTrend
-35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyQuarterlyAndAnnualReport
-35 9 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyResearchReportAndRating
-35 9 * * *	/root/scrapywrapper/RunSpider.sh BusinessIntelligence
-35 9 * * *	/root/scrapywrapper/RunSpider.sh TopTenShareHolder
+15 16 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyReport_json
+15 16 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyInfo
+15 16 * * *	/root/scrapywrapper/RunSpider.sh PublicAgencyProfitForecast
+15 16 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyAgencyRating
+15 16 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyCoreBusiness
+15 16 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyCoreSubject
+15 16 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyKeyNumber
+15 16 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyOperationReport
+15 16 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyProfitTrend
+15 16 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyQuarterlyAndAnnualReport
+15 16 * * *	/root/scrapywrapper/RunSpider.sh PublicCompanyResearchReportAndRating
+15 16 * * *	/root/scrapywrapper/RunSpider.sh BusinessIntelligence
+15 16 * * *	/root/scrapywrapper/RunSpider.sh TopTenShareHolder
 
-35 9 * * 2	/root/scrapywrapper/RunSpider.sh HistoricalWeatherDisaster
-35 9 * * 2	/root/scrapywrapper/RunSpider.sh DiseaseForecast
-35 9 * * 2	/root/scrapywrapper/RunSpider.sh RandomInspection
-35 9 * * 2	/root/scrapywrapper/RunSpider.sh DrugConsistencyEvaluation
+15 16 * * *	/root/scrapywrapper/RunSpider.sh HistoricalWeatherDisaster
+15 16 * * *	/root/scrapywrapper/RunSpider.sh DiseaseForecast
+15 16 * * *	/root/scrapywrapper/RunSpider.sh RandomInspection
+15 16 * * *	/root/scrapywrapper/RunSpider.sh DrugConsistencyEvaluation
 
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh CityAirQualityMonthly
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh InaccurateAdvertisement
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmMarketMonthlyPrice_zyctd
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmMarketMonthlyPrice_kmzyw
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmMarketMonthlyPrice_yaotong
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginMonthlyPrice_zyctd
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginMonthlyPrice_kmzyw
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginMonthlyPrice_yaotong
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh DrugBidInfo
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh TcmTradingCompany
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh PlantingBase
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh ExtractInfo
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh PatentCategoryNumber
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh DrugManual
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh DrugPackagingMaterial
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh DrugRecall
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh DrugSafetyWarning
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh JapanMedicalProductInfo
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh EUMedicalProductInfo
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh InfectiousDiseaseInfo
-35 9 7 * *	/root/scrapywrapper/RunSpider.sh MedicalAndHealthOrganizationStatistic
+15 16 * * *	/root/scrapywrapper/RunSpider.sh DrugManual
+15 16 * * *	/root/scrapywrapper/RunSpider.sh DrugPackagingMaterial
+15 16 * * *	/root/scrapywrapper/RunSpider.sh DrugRecall
+15 16 * * *	/root/scrapywrapper/RunSpider.sh DrugSafetyWarning
 
-#35 9 7 * *	/root/scrapywrapper/load_static/OrangeBook.sh
-#35 9 7 * *	/root/scrapywrapper/load_static/DrugsFDA.sh
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh CityAirQualityMonthly
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh InaccurateAdvertisement
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh TcmMarketMonthlyPrice_zyctd
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh TcmMarketMonthlyPrice_kmzyw
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh TcmMarketMonthlyPrice_yaotong
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginMonthlyPrice_zyctd
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginMonthlyPrice_kmzyw
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh TcmPlaceOfOriginMonthlyPrice_yaotong
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh DrugBidInfo
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh TcmTradingCompany
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh PlantingBase
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh ExtractInfo
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh PatentCategoryNumber
 
-0 7 27 2 *	/root/scrapywrapper/RunSpider.sh DoctorRecord
-0 7 27 2 *	/root/scrapywrapper/RunSpider.sh PharmacistRecord
-0 7 27 2 *	/root/scrapywrapper/RunSpider.sh AnnualHealthStastic
-0 7 27 2 *	/root/scrapywrapper/RunSpider.sh HospitalList
-0 7 27 2 *	/root/scrapywrapper/RunSpider.sh DiseaseInfo
-0 7 27 2 *	/root/scrapywrapper/RunSpider.sh DiseaseAgeStatistic
-0 7 27 2 *	/root/scrapywrapper/RunSpider.sh DiseaseRegionalStatistic
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh DrugManual
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh DrugPackagingMaterial
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh DrugRecall
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh DrugSafetyWarning
 
-0 7 27 2 *	/root/scrapywrapper/RunSpider.sh TcmFormula
-#0 7 27 2 *	/root/scrapywrapper/RunSpider.sh HistoricalWeather
-0 7 27 2 *	/root/scrapywrapper/RunSpider.sh TcmSeedResource
-0 7 27 2 *	/root/scrapywrapper/RunSpider.sh DrugRetailPriceCap
-0 7 27 2 *	/root/scrapywrapper/RunSpider.sh GapAuthentication
-0 7 27 2 *	/root/scrapywrapper/RunSpider.sh RegionalDrugReimbursementList
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh JapanMedicalProductInfo
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh EUMedicalProductInfo
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh InfectiousDiseaseInfo
+15 16 4 * *	/root/scrapywrapper/RunSpider.sh MedicalAndHealthOrganizationStatistic
+
+#15 16 7 * *	/root/scrapywrapper/load_static/OrangeBook.sh
+#15 16 7 * *	/root/scrapywrapper/load_static/DrugsFDA.sh
+
+0 18 11 5 *	/root/scrapywrapper/RunSpider.sh DoctorRecord
+0 18 11 5 *	/root/scrapywrapper/RunSpider.sh PharmacistRecord
+0 18 11 5 *	/root/scrapywrapper/RunSpider.sh AnnualHealthStastic
+0 18 11 5 *	/root/scrapywrapper/RunSpider.sh HospitalList
+0 18 11 5 *	/root/scrapywrapper/RunSpider.sh DiseaseInfo
+0 18 11 5 *	/root/scrapywrapper/RunSpider.sh DiseaseAgeStatistic
+0 18 11 5 *	/root/scrapywrapper/RunSpider.sh DiseaseRegionalStatistic
+
+0 18 11 5 *	/root/scrapywrapper/RunSpider.sh TcmFormula
+0 18 11 5 *	/root/scrapywrapper/RunSpider.sh HistoricalWeather
+0 18 11 5 *	/root/scrapywrapper/RunSpider.sh TcmSeedResource
+0 18 11 5 *	/root/scrapywrapper/RunSpider.sh DrugRetailPriceCap
+0 18 11 5 *	/root/scrapywrapper/RunSpider.sh GapAuthentication
+0 18 11 5 *	/root/scrapywrapper/RunSpider.sh RegionalDrugReimbursementList
 

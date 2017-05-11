@@ -78,13 +78,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'required': True
 			}, {
 				'name': "RegionID",
-				'reference': {
-					'table': "TB_Addresses",
-					'field': "PriceSettingRegion",
-					'remote_field': "Name",
-					'remote_id_field': 'PID',
-					'match': 'lpm'
-				}
+				'reference': { 'field': "PriceSettingRegion", 'match': 'address' }
 			}, {
 				'name': "DocumentNumber",
 				'selector_table_sibling': u"文件号",

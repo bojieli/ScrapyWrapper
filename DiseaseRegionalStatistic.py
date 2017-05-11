@@ -69,7 +69,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'upsert': True,
 			'fields': [{
 				'name': 'RegionID',
-				'reference': { 'field': 'Region', 'table': 'TB_Addresses', 'remote_field': 'Name', 'remote_id_field': 'PID', 'match': 'lpm' },
+				'reference': { 'field': 'Region', 'match': 'address' },
 				'required': True
 			}, {
 				'name': 'Region',

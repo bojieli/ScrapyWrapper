@@ -103,13 +103,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'name': 'Specification'
 			}, {
 				'name': 'PlaceOfOriginID',
-				'reference': {
-					'field': 'PlaceOfOrigin',
-					'table': 'TB_Addresses',
-					'remote_field': 'Name',
-					'remote_id_field': 'PID',
-					'match': 'lpm'
-				}
+				'reference': { 'fields': ['PlaceOfOrigin', 'CurrentAddress', 'CompanyName'], 'match': 'address' }
 			}]
 		}
 	}

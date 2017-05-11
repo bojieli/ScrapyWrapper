@@ -87,13 +87,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_json': "data.me_first"
 			}, {
 				'name': "BidProvinceID",
-				'reference': {
-					'table': "TB_Addresses",
-					'field': "BidProvince",
-					'remote_field': "Name",
-					'remote_id_field': 'PID',
-					'match': 'lpm'
-				}
+				'reference': { 'field': "BidProvince", 'match': 'address' }
 			}, {
 				'name': "PublicationDate",
 				'selector_json': "data.me_approvaldate"

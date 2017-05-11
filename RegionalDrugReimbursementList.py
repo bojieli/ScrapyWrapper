@@ -33,13 +33,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'type': 'intermediate',
 			'fields': [{
 				'name': "RegionID",
-				'reference': {
-					'field': "Region",
-					'table': "TB_Addresses",
-					'remote_field': "Name",
-					'remote_id_field': "PID",
-					'match': 'lpm'
-				}
+				'reference': { 'field': "Region", 'match': 'address' }
 			}, {
 				'name': 'Region',
 				'selector_css': '#yibaomulu-content h1',
@@ -64,6 +58,14 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'name': "DrugName",
 				'selector_xpath': '//td[3]',
 				'required': True
+            }, {
+                'name': "DrugID",
+                'reference': {
+					'table': "TB_Resources_MedicineMadeInChina",
+					'fields': ["DrugName"],
+					'remote_fields': ["CnName"],
+					'remote_id_field': 'ResID'
+                }
 			}, {
 				'name': "DrugNameEnglish",
 				'selector_xpath': '//td[4]'
