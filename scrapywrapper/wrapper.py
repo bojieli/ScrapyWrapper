@@ -773,17 +773,24 @@ class SpiderWrapper(scrapy.Spider):
             addr_pid = None
             curr_path = ''
             addr_str = to_match
+            suffixes = ['', u'省', u'市', u'县', u'州', u'区', u'乡', u'镇', u'村']
             while len(addr_str) > 0:
-                last_match_length = 1
-                for length in range(1, len(addr_str)):
-                    if self.address_cache.get(addr_str[:length]):
-                        matches = self.address_cache[addr_str[:length]]
-                        for match in matches:
-                            if curr_path == '' or match['Path'].startswith(curr_path):
-                                curr_path = match['Path']
-                                addr_pid = match['PID']
-                                last_match_length = length
-                addr_str = addr_str[last_match_length:]
+                last_match_length = 0
+                for suffix in suffixes:
+                    last_match_length = 0
+                    for length in range(len(addr_str), 0, -1):
+                        if self.address_cache.get(addr_str[:length] + suffix):
+                            matches = self.address_cache[addr_str[:length] + suffix]
+                            for match in matches:
+                                if curr_path == '' or match['Path'].startswith(curr_path):
+                                    curr_path = match['Path']
+                                    addr_pid = match['PID']
+                                    last_match_length = length
+                    if last_match_length > 0:
+                        addr_str = addr_str[last_match_length:]
+                        break
+                if last_match_length == 0:
+                    addr_str = addr_str[1:]
 
             if not addr_pid:
                 return False
@@ -1336,7 +1343,19 @@ class SpiderWrapper(scrapy.Spider):
             conf.guid_field = self.config.default_guid_field
         update_fields = [ field + ' = %s' for field in row ]
         update_data = [ row[field] if field in row else '' for field in row ]
-        self.cursor.execute("UPDATE " + conf.table_name + " SET " + ','.join(update_fields) + " WHERE " + conf.guid_field + " = %s", tuple(update_data + [guid]))
+        try:
+            SQL = "UPDATE " + conf.table_name + " SET " + ','.join(update_fields) + " WHERE " + conf.guid_field + " = %s"
+            self.cursor.execute(SQL, tuple(update_data + [guid]))
+        except Exception as e:
+            print('======== ERROR Database operation ======')
+            print(e)
+            print('Table: ' + conf.table_name)
+            print('GUID: ' + str(guid))
+            print('URL: ' + url)
+            print('Data: ' + repr(row))
+            print('SQL: ' + SQL)
+            print('======== ERROR END database operation ======')
+            
         self._insert_url_table(conf, guid, url, action="Updated")
 
         if 'debug' in conf:
