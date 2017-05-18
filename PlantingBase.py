@@ -58,6 +58,9 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'name': "Province",
 				'selector_json': 'BaseName',
 				'data_postprocessor': lambda d,_: getProvince(d)
+            }, {
+                'name': "RegionID",
+                'reference': { 'fields': ['Province','PlantingBaseName'], 'match': 'address' }
 			}, {
 				'name': "PlantingBaseName",
 				'selector_json': 'BaseName'

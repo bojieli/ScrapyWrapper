@@ -38,7 +38,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'upsert': True,
 			'fields': [{
 				'name': "RegionID",
-				'reference': { 'field': 'HospitalName', 'match': 'address' }
+				'reference': { 'fields': ['HospitalName','Address'], 'match': 'address' }
 			}, {
 				'name': "HospitalName",
 				'selector_table_sibling': u'医院名称：',

@@ -26,7 +26,7 @@ first_line = True
 count = 0
 for line in f:
 	values = line.split('~')
-	values = [v.strip() for v in values]
+	values = [v.strip().strip('"').decode('utf8') for v in values]
 	if first_line:
 		first_line = False
 		if "ID" in values:

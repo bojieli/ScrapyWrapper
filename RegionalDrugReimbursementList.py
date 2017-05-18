@@ -18,13 +18,22 @@ class ScrapyConfig(ScrapyWrapperConfig):
 	begin_urls = ["http://www.yaopinnet.com/tools/yibao.asp"]
 	steps = {
 		"begin": {
-			'res': {
-				'selector_xpath': '//a/@href',
-				'selector_regex': '(/yibaomulu/.*\.htm)',
-				'next_step': 'content'
-			}
+			'res': [{
+				'selector_href_text': u'中药部分',
+				'next_step': 'content_traditional'
+			}, {
+				'selector_href_text': u'西药部分',
+				'next_step': 'content_non_traditional'
+            }]
 		},
-		"content": {
+		"content_traditional": {
+            'fields': [{'name': 'IsTraditionalMedicine', 'value': 1}],
+			'res': {
+				'next_step': 'rows',
+			},
+		},
+		"content_non_traditional": {
+            'fields': [{'name': 'IsTraditionalMedicine', 'value': 0}],
 			'res': {
 				'next_step': 'rows',
 			},

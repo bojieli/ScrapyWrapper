@@ -580,7 +580,16 @@ class SpiderWrapper(scrapy.Spider):
                         to_strip = True
                     serialize_method = 'text' if to_strip else 'html'
                     try:
-                        result = lxml.etree.tostring(matches[0], method=serialize_method, encoding=unicode)
+                        el = matches[0]
+                        # if not to strip tags, remove the outermost tag
+                        if not to_strip:
+                            el.attrib.clear()
+                            el.tag = '||ToRemove||'
+
+                        result = lxml.etree.tostring(el, method=serialize_method, encoding=unicode).strip()
+                        if not to_strip:
+                            assert result.startswith('<'+el.tag+'>') and result.endswith('</'+el.tag+'>')
+                            result = result[len('<'+el.tag+'>'):-len('</'+el.tag+'>')]
                     except:
                         result = self._strip_tags(to_strip, unicode(matches[0]))
 

@@ -1,0 +1,91 @@
+# Edit this file to introduce tasks to be run by cron.
+# 
+# Each task to run has to be defined through a single line
+# indicating with different fields when the task will be run
+# and what command to run for the task
+# 
+# To define the time you can provide concrete values for
+# minute (m), hour (h), day of month (dom), month (mon),
+# and day of week (dow) or use '*' in these fields (for 'any').# 
+# Notice that tasks will be started based on the cron's system
+# daemon's notion of time and timezones.
+# 
+# Output of the crontab jobs (including errors) is sent through
+# email to the user the crontab file belongs to (unless redirected).
+# 
+# For example, you can run a backup of all your user accounts
+# at 5 a.m every week with:
+# 20 5 * * 1 tar -zcf /var/backups/home.tgz /home/
+# 
+# For more information see the manual pages of crontab(5) and cron(8)
+# 
+# m h  dom mon dow   command
+
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=AirQualityForecast"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=WeatherDisasterForecast"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=TcmMarketDailyPrice_zyctd"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=TcmMarketDailyPrice_kmzyw"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=TcmMarketDailyPrice_yaotong"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=TcmPlaceOfOriginPrice_zyctd"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=TcmPlaceOfOriginPrice_kmzyw"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=TcmPlaceOfOriginPrice_yaotong"
+
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=PublicCompanyReport_json"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=PublicCompanyInfo"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=PublicAgencyProfitForecast"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=PublicCompanyAgencyRating"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=PublicCompanyCoreBusiness"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=PublicCompanyCoreSubject"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=PublicCompanyKeyNumber"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=PublicCompanyOperationReport"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=PublicCompanyProfitTrend"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=PublicCompanyQuarterlyAndAnnualReport"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=PublicCompanyResearchReportAndRating"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=BusinessIntelligence"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=86400&name=TopTenShareHolder"
+
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=HistoricalWeatherDisaster"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=DiseaseForecast"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=RandomInspection"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=DrugConsistencyEvaluation"
+
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=CityAirQualityMonthly"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=InaccurateAdvertisement"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=TcmMarketMonthlyPrice_zyctd"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=TcmMarketMonthlyPrice_kmzyw"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=TcmMarketMonthlyPrice_yaotong"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=TcmPlaceOfOriginMonthlyPrice_zyctd"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=TcmPlaceOfOriginMonthlyPrice_kmzyw"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=TcmPlaceOfOriginMonthlyPrice_yaotong"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=DrugBidInfo"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=TcmTradingCompany"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=PlantingBase"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=ExtractInfo"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=PatentCategoryNumber"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=DrugManual"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=DrugPackagingMaterial"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=DrugRecall"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=DrugSafetyWarning"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=JapanMedicalProductInfo"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=EUMedicalProductInfo"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=InfectiousDiseaseInfo"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=604800&name=MedicalAndHealthOrganizationStatistic"
+
+#35 9 7 * *	/root/scrapywrapper/load_static/OrangeBook.sh
+#35 9 7 * *	/root/scrapywrapper/load_static/DrugsFDA.sh
+
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=2592000&name=DoctorRecord"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=2592000&name=PharmacistRecord"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=2592000&name=AnnualHealthStastic"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=2592000&name=HospitalList"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=2592000&name=DiseaseInfo"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=2592000&name=DiseaseAgeStatistic"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=2592000&name=DiseaseRegionalStatistic"
+
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=2592000&name=TcmFormula"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=2592000&name=HistoricalWeather"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=2592000&name=TcmSeedResource"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=2592000&name=DrugRetailPriceCap"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=2592000&name=GapAuthentication"
+curl aliyun.ring0.me:8080/task/new -d "time=0&incremental=1&freq=2592000&name=RegionalDrugReimbursementList"
+

@@ -39,12 +39,13 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'name': "$$County",
 				'selector_json': 'County',
 			}, {
-				'name': 'RegionID',
-				'reference': { 'field': '$$City', 'match': 'address' }
-			}, {
 				'name': 'Region',
+                'dependencies': ['$$City','$$Province','$$County'],
 				'selector': lambda _, meta: meta['$$Province'] + meta['$$City'] + meta['$$County'],
 				'required': True
+			}, {
+				'name': 'RegionID',
+				'reference': { 'field': 'Region', 'match': 'address' }
 			}, {
 				'name': "DisasterType",
 				'selector_json': 'Disaster',
@@ -52,7 +53,10 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': "DisasterDescription",
 				'selector_json': 'Addtion'
-			}
+			}, {
+                'name': "PlaceOfOrigin",
+                'selector_json': 'BaseName'
+            }
 			]
 		}
 	}
