@@ -5,72 +5,72 @@ from scrapywrapper.config import ScrapyWrapperConfig
 import re
 
 def is_page_higher_than_curr(url, meta):
-	m = re.search('page=([0-9]*)', meta['$$url'])
-	if not m:
-		return True
-	curr_page = int(m.group(1))
-	m = re.search('page=([0-9]*)', url)
-	if not m:
-		return False
-	next_page = int(m.group(1))
-	return next_page > curr_page
+    m = re.search('page=([0-9]*)', meta['$$url'])
+    if not m:
+        return True
+    curr_page = int(m.group(1))
+    m = re.search('page=([0-9]*)', url)
+    if not m:
+        return False
+    next_page = int(m.group(1))
+    return next_page > curr_page
 
 def parse_TcmID(meta):
-	if '$$PreferredTcmID' in meta and meta['$$PreferredTcmID']:
-		meta['TcmID'] = meta['$$PreferredTcmID']
-	else:
-		meta['TcmID'] = meta['$$DefaultTcmID']
-	return meta
+    if '$$PreferredTcmID' in meta and meta['$$PreferredTcmID']:
+        meta['TcmID'] = meta['$$PreferredTcmID']
+    else:
+        meta['TcmID'] = meta['$$DefaultTcmID']
+    return meta
 
 class ScrapyConfig(ScrapyWrapperConfig):
-	begin_urls = ["http://124.254.6.83:8088/querymain.asp"]
-	steps = {
+    begin_urls = ["http://124.254.6.83:8088/querymain.asp"]
+    steps = {
         # 首页（药材分类目录页）
-		"begin": {
-			'req': {
-				'encoding': 'gb2312'
-			},
-			'res': {
+        "begin": {
+            'req': {
+                'encoding': 'gb2312'
+            },
+            'res': {
                 # 首先找出所有链接，然后筛选出中药材类别的 URL
-				'selector_xpath': '//a/@href',
-				'selector_regex': u'(show.asp\?.*)',
-				'next_step': 'content',
+                'selector_xpath': '//a/@href',
+                'selector_regex': u'(show.asp\?.*)',
+                'next_step': 'content',
                 # 由于网站使用 cookie 来保存每个中药材类别的查询结果，而采集程序是多线程的，可能同时在采集多个中药材类别，因此需要把不同中药材类别用 new_session 隔开。
-				'new_session': True
-			}
-		},
+                'new_session': True
+            }
+        },
         # 药材详情页
-		"content": {
-			'req': {
-				'encoding': 'gb2312',
+        "content": {
+            'req': {
+                'encoding': 'gb2312',
                 # 由于链接相同，需要指定 dont_filter 以免 scrapy 引擎认为是重复 URL
-				'dont_filter': True
-			},
-			'res': [{
+                'dont_filter': True
+            },
+            'res': [{
                 # 解析药材信息，入库
-				'selector_xpath': '/html/body/table/tr[2]/td/font/table',
-				'next_step': 'db'
-			},
-			{
+                'selector_xpath': '/html/body/table/tr[2]/td/font/table',
+                'next_step': 'db'
+            },
+            {
                 # 解析下一页的药材信息
-				'selector_href_text': u'下一页',
+                'selector_href_text': u'下一页',
                 # 防止死循环，因为最后一页的“下一页”链接仍然是当前页面
-				'data_validator': is_page_higher_than_curr,
-				'next_step': 'content',
+                'data_validator': is_page_higher_than_curr,
+                'next_step': 'content',
                 # 每个网页上面有两个相同的“下一页”链接，只访问一个即可
-				'limit': 1
-			}]
-		},
-		"db": {
-			'type': "db",
-			'table_name': "TcmSeedResource",
-			'unique': ['PlatformResNumber'],
-			'upsert': True,
+                'limit': 1
+            }]
+        },
+        "db": {
+            'type': "db",
+            'table_name': "TcmSeedResource",
+            'unique': ['PlatformResNumber'],
+            'upsert': True,
             # 在解析完所有 fields 之后，执行 postprocessor 后处理程序
             # 这里的目的是根据两种不同方式匹配 TcmID，如果根据名字和药典 2015 的能匹配出来，优先用药典 2015 的；不然就只根据名字匹配。
-			'postprocessor': parse_TcmID,
+            'postprocessor': parse_TcmID,
             # 匹配数据库的各个域
-			'fields': [
+            'fields': [
             # selector_table_sibling 表示获取表格中紧挨着的右边一格
 { 'name': "TcmSeedName", 'selector_table_sibling': u"种质名称", 'required': True },
 { 'name': "$$YaoDianName", 'value': u'中国药典2015年版一部' },
@@ -203,22 +203,22 @@ class ScrapyConfig(ScrapyWrapperConfig):
 { 'name': "BerberineContent", 'selector_table_sibling': u"小檗碱含量" },
 { 'name': "FingerprintSpectrum", 'selector_table_sibling': u"指纹图谱" },
 { 'name': "ChemicalFingerprintSpectrum", 'selector_table_sibling': u"化学指纹图谱" },
-			],
+            ],
             # 存完表格主要内容后，保存链接中的图片
-			'res': {
-				'selector_table_sibling': u'图像',
+            'res': {
+                'selector_table_sibling': u'图像',
                 # 如果有多张图片，会 fork 出多个下一段
-				'selector_regex': '([A-Za-z0-9-]+.jpg)',
-				'data_postprocessor': lambda filename, _: 'http://124.254.6.83:8088/photo/' + filename,
-				'next_step': 'image'
-			}
-		},
+                'selector_regex': '([A-Za-z0-9-]+.jpg)',
+                'data_postprocessor': lambda filename, _: 'http://124.254.6.83:8088/photo/' + filename,
+                'next_step': 'image'
+            }
+        },
         # 保存链接中的图片（特殊处理）
         # 注意，HTML 中内嵌或链接的图片，一般在 fields 解析中用 strip_tags: False 就能处理。这里是特殊情况，因为图片链接是 JavaScript 生成的。
-		"image": {
-			'type': "file",
-		}
-	}
+        "image": {
+            'type': "file",
+        }
+    }
 
 myspider = SpiderFactory(ScrapyConfig(), __name__)
 
