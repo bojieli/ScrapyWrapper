@@ -1,5 +1,7 @@
 #?usr/bin/python
 # -*- coding:utf-8 -*-
+import json
+
 class ScrapyHelper():
 	def begin_url_range(self, prefix, suffix, from_id, to_id):
 		for url_id in range(from_id, to_id):
@@ -123,4 +125,24 @@ class AttrDict(dict):
 	def __init__(self, *args, **kwargs):
 		super(AttrDict, self).__init__(*args, **kwargs)
 		self.__dict__ = self
+
+
+def dict2json(d):
+    s = '{'
+    first = True
+    for k in d:
+        if not first:
+            s += ','
+        else:
+            first = False
+        s += '"' + k + '":'
+        text = ''
+        try:
+            text = d[k].replace('\\', '\\\\').replace('"', '\\"')
+        except:
+            text = repr(d[k])
+        s += '"' + text + '"'
+
+    s += '}'
+    return s
 

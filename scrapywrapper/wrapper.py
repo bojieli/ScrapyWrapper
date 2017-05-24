@@ -18,7 +18,7 @@ import datetime
 from HTMLParser import HTMLParser
 from config import ScrapyWrapperConfig
 from urlparse import urljoin
-from .helper import ScrapyHelper, AttrDict
+from .helper import ScrapyHelper, AttrDict, dict2json
 import types
 import copy
 from scrapy_webdriver.http import WebdriverRequest
@@ -42,6 +42,7 @@ class SpiderWrapper(scrapy.Spider):
     def start_requests(self):
         self._check_config()
         self._init_db()
+        self.batch_no = datetime.datetime.now().strftime('%Y%m%d')
         self.__total_records_reported = False
         self.__accumulative_report_counter = 0
         self.counter = AttrDict({
@@ -391,6 +392,7 @@ class SpiderWrapper(scrapy.Spider):
                         print('----- begin JSON -----')
                         print(response_text)
                         print('----- end JSON -----')
+                        self.log_anomaly(meta, 7, None, response_text, str(res_conf))
 
                 if obj:
                     if type(obj) is list:
@@ -466,6 +468,7 @@ class SpiderWrapper(scrapy.Spider):
             print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
             print('    while parsing response (response ' + str(len(response_text)) + ' bytes)')
             traceback.print_tb(e[2])
+            self.log_anomaly(meta, 8, None, str(e[0]) + " " + str(e[1]) + " " + str(res_conf), response_text)
 
         if 'required' in res_conf and res_conf['required']:
             if len(results) == 0:
@@ -474,6 +477,7 @@ class SpiderWrapper(scrapy.Spider):
                 print(repr(response_text)[:10000])
                 self.counter.error_count += 1
                 self.report_status(force=True)
+                self.log_anomaly(meta, 1, None, None, str(res_conf))
 
         if 'limit' in res_conf and len(results) > res_conf.limit:
             results = results[:res_conf.limit]
@@ -513,6 +517,8 @@ class SpiderWrapper(scrapy.Spider):
         meta['$$new_session'] = res_conf['new_session'] if 'new_session' in res_conf else False
         if 'cookiejar' in response.meta and not meta['$$new_session']:
             meta['$$session_id'] = response.meta['cookiejar']
+        if '$$anomaly_messages' not in meta:
+            meta['$$anomaly_messages'] = []
 
         body = None
         try:
@@ -541,6 +547,7 @@ class SpiderWrapper(scrapy.Spider):
                 print(repr(body))
             print('======= END DEBUG HTTP =========')
 
+        meta['$$body'] = body
         return self._parse_and_mangle_text_response(body, res_conf, meta)
 
     def _parse_record_field(self, res_conf, result, meta):
@@ -606,6 +613,7 @@ class SpiderWrapper(scrapy.Spider):
                         print('----- begin JSON -----')
                         print(result)
                         print('----- end JSON -----')
+                        self.log_anomaly(meta, 7, res_conf.name, result, str(res_conf))
                         result = '' # default empty
 
                 if obj:
@@ -685,6 +693,7 @@ class SpiderWrapper(scrapy.Spider):
             print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
             print('    while parsing response (' + str(len(result)) + ' bytes)')
             traceback.print_tb(e[2])
+            self.log_anomaly(meta, 8, res_conf.name, str(e[0]) + " " + str(e[1]) + " " + str(res_conf), result)
 
         if result is not None:
             if type(result) is not unicode:
@@ -951,6 +960,7 @@ class SpiderWrapper(scrapy.Spider):
                 response.body_stream = urllib2.urlopen(response.url)
             except:
                 print('Failed to download image "' + response.url + '" in article "' + meta['$$url'] + '"')
+                self.log_anomaly(meta, 6, None, None, response.url)
                 continue
             response.headers = {}
             record = self._save_file_record(response)
@@ -1006,6 +1016,7 @@ class SpiderWrapper(scrapy.Spider):
                         print(result.encode('utf-8')[:10000])
                     self.counter.error_count += 1
                     self.report_status(force=True)
+                    self.log_anomaly(meta, 1, res_conf.name, None, str(res_conf))
                 return False
         meta[res_conf.name] = parsed
         return True
@@ -1070,11 +1081,17 @@ class SpiderWrapper(scrapy.Spider):
             if "reference" in res_conf:
                 status = self._parse_reference_field(res_conf, meta)
                 if status == False and "required" in res_conf and res_conf.required:
-                    print('Record parse error: required reference field ' + res_conf.name + ' not matched (value "' + meta[res_conf.reference.field].encode('utf-8') + '")')
+                    ref_val = None
+                    if 'field' in res_conf.reference:
+                        ref_val = meta[res_conf.reference.field]
+                    elif 'fields' in res_conf.reference:
+                        ref_val = ','.join(meta[res_conf.reference.fields])
+                    print('Record parse error: required reference field ' + res_conf.name + ' not matched (value "' + ref_val.encode('utf-8') + '")')
                     print('Full record: ')
                     print(result.encode('utf-8')[:10000])
                     self.counter.error_count += 1
                     self.report_status(force=True)
+                    self.log_anomaly(meta, 2, res_conf.name, ref_val, str(res_conf))
                     return
             else: # normal field
                 if not self._parse_db_field(res_conf, result, meta):
@@ -1095,9 +1112,9 @@ class SpiderWrapper(scrapy.Spider):
                 data_guid = self._get_guid_by_unique_constraint(conf, conf.unique, url, row)
                 if data_guid:
                     if 'upsert' in conf and conf.upsert:
-                        self._update_db_record(conf, data_guid, url, row)
+                        self._update_db_record(conf, data_guid, url, row, meta['$$body'], meta['$$anomaly_messages'])
             if not data_guid:
-                data_guid = self._insert_db_record(conf, url, row)
+                data_guid = self._insert_db_record(conf, url, row, meta['$$body'], meta['$$anomaly_messages'])
 
             meta['$$info_id'] = data_guid
             meta['$$info_table'] = conf.table_name
@@ -1141,6 +1158,7 @@ class SpiderWrapper(scrapy.Spider):
                 print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
                 print('    while saving file to FTP, filename: ' + filename)
                 traceback.print_tb(e[2])
+                self.log_anomaly(meta, 9, None, filename, str(e[0]) + " " + str(e[1]))
                 return False
 
         return True
@@ -1238,8 +1256,10 @@ class SpiderWrapper(scrapy.Spider):
         meta['$$referer'] = referer
         meta['$$conf'] = conf
         meta['$$step'] = curr_step
-        meta['$$info_id'] = meta['$$info_id'] if '$$info_id' in meta else None
-        meta['$$info_table'] = meta['$$info_table'] if '$$info_table' in meta else None
+        meta['$$info_id'] = meta.get('$$info_id')
+        meta['$$info_table'] = meta.get('$$info_table')
+        meta['$$body'] = None
+        meta['$$anomaly_messages'] = []
         req.meta['$$meta'] = meta
         return req
 
@@ -1250,10 +1270,12 @@ class SpiderWrapper(scrapy.Spider):
         response.meta['$$meta'] = result[2]
         response.meta['$$step'] = result[1]
         response.meta['$$conf'] = conf
-        response.meta['$$encoding'] = result[2]['$$encoding'] if '$$encoding' in result[2] else None
-        response.meta['$$referer'] = result[2]['$$referer'] if '$$referer' in result[2] else None
+        response.meta['$$encoding'] = result[2].get('$$encoding')
+        response.meta['$$referer'] = result[2].get('$$referer')
         response.body = result[0]
         response.body_as_unicode = lambda: response.body
+        response.meta['$$body'] = response.body
+        response.meta['$$anomaly_messages'] = result[2].get('$$anomaly_messages')
         return response
 
     def _yield_requests_from_parse_results(self, url, results):
@@ -1343,7 +1365,59 @@ class SpiderWrapper(scrapy.Spider):
         self.insert_row(self.config.url_table.table_name, url_row)
         print(url_row[self.config.url_table.time_field] + " [" + self.name + "] " + action + " one db record to table " + conf.table_name + " (URL: " + url + " )")
 
-    def _update_db_record(self, conf, guid, url, row):
+    # state: 1 insert, 2 modify, 3 error
+    def _write_datalog(self, conf, data_guid, data_row, url, source_content, anomaly_messages, state=1):
+        if len(anomaly_messages) != 0:
+            state = 3
+
+        datalog_id = str(uuid.uuid4())
+        datalog_row = {
+            'ID': datalog_id,
+            'resource_id': data_guid,
+            'resource_content': dict2json(data_row),
+            'resource_table': conf.table_name,
+            'state': state,
+            'batch_no': self.batch_no,
+            'create_time': datetime.datetime.now(),
+            'update_time': datetime.datetime.now()
+        }
+        datalog_table_name = 'DataLog'
+        datalog_keys = ['resource_id', 'resource_table']
+        if self.is_row_exists(datalog_table_name, datalog_keys, datalog_row):
+            # do not update create time on update
+            del datalog_row['create_time']
+            self.update_row(datalog_table_name, datalog_keys, datalog_row)
+        else:
+            self.insert_row(datalog_table_name, datalog_row)
+        
+        datalog_history_id = str(uuid.uuid4())
+        datalog_history_row = {
+            'ID': datalog_history_id,
+            'data_log_id': datalog_id,
+            'resource_content': dict2json(data_row),
+            'state': state,
+            'batch_no': self.batch_no,
+            'create_time': datetime.datetime.now(),
+            'source_url': url,
+            'source_content': source_content
+        }
+        self.insert_row('DataLogHistory', datalog_history_row)
+
+        for msg in anomaly_messages:
+            anomaly_id = str(uuid.uuid4())
+            anomaly_row = {
+                'ID': anomaly_id,
+                'data_log_history_id': datalog_history_id,
+                'type': anomaly_messages['type'],
+                'column_name': anomaly_messages['column_name'],
+                'column_content': anomaly_messages['column_content'],
+                'comment': anomaly_messages['comment']
+            }
+            self.insert_row('DataLogAnomaly', anomaly_row)
+
+
+
+    def _update_db_record(self, conf, guid, url, row, source_content='', anomaly_messages=[]):
         if not self.__total_records_reported:
             self.counter.total_records = self.get_total_records(conf.table_name)
             self.report_status(force=True)
@@ -1364,20 +1438,39 @@ class SpiderWrapper(scrapy.Spider):
             print('Table: ' + conf.table_name)
             print('GUID: ' + str(guid))
             print('URL: ' + url)
-            print('Data: ' + repr(row))
+            print('Data: ' + dict2json(row))
             print('SQL: ' + SQL)
             print('======== ERROR END database operation ======')
+            anomaly_messages.append({
+                'type': 10,
+                'column_name': None,
+                'column_content': dict2json(row),
+                'comment': str(e)
+            })
             
-        self._insert_url_table(conf, guid, url, action="Updated")
-
         if 'debug' in conf:
             print('======== DEBUG Database operation ======')
             print('Table: ' + conf.table_name)
             print('GUID: ' + str(guid))
             print('URL: ' + url)
-            print('Data: ' + repr(row))
+            print('Data: ' + dict2json(row))
             print('======== END DEBUG database operation ======')
+
+        self._insert_url_table(conf, guid, url, action="Updated")
+        self._write_datalog(conf, guid, row, url, source_content, anomaly_messages, state=2)
         return guid
+
+
+    def log_anomaly(self, meta, anomaly_type, column_name, column_content, comment):
+        if '$$anomaly_messages' not in meta:
+            meta['$$anomaly_messages'] = []
+        meta['$$anomaly_messages'].append({
+            'type': anomaly_type,
+            'column_name': column_name,
+            'column_content': column_content,
+            'comment': comment
+        })
+
 
     def _remove_metadata_fields(self, row):
         new_row = {}
@@ -1386,7 +1479,7 @@ class SpiderWrapper(scrapy.Spider):
                 new_row[k] = row[k]
         return new_row
 
-    def _insert_db_record(self, conf, url, row):
+    def _insert_db_record(self, conf, url, row, source_content='', anomaly_messages=[]):
         if not self.__total_records_reported:
             self.counter.total_records = self.get_total_records(conf.table_name)
             self.report_status(force=True)
@@ -1400,9 +1493,51 @@ class SpiderWrapper(scrapy.Spider):
         # data table
         data_guid = str(uuid.uuid4())
         row[conf.guid_field] = data_guid
-        self.insert_row(conf.table_name, row)
+        try:
+            self.insert_row(conf.table_name, row)
+        except Exception as e:
+            print('======== ERROR Database operation ======')
+            print(e)
+            print('Table: ' + conf.table_name)
+            print('GUID: ' + str(guid))
+            print('URL: ' + url)
+            print('Data: ' + dict2json(row))
+            print('SQL: ' + SQL)
+            print('======== ERROR END database operation ======')
+            anomaly_messages.append({
+                'type': 10,
+                'column_name': None,
+                'column_content': dict2json(row),
+                'comment': str(e)
+            })
         self._insert_url_table(conf, data_guid, url, action="Inserted")
+        self._write_datalog(conf, data_guid, row, url, source_content, anomaly_messages, state=1)
         return data_guid
+
+    def is_row_exists(self, table_name, pk_fields, row):
+        if isinstance(pk_fields, str):
+            pk_fields = [pk_fields]
+        sql = "SELECT COUNT(*) AS cnt FROM " + table_name + " WHERE " + " AND ".join([pk_field + " = %s" for pk_field in pk_fields])
+        self.cursor.execute(sql, tuple([row[pk_field] for pk_field in pk_fields]))
+        count_res = self.cursor.fetchone()
+        return int(count_res['cnt']) > 0
+
+    def upsert_row(self, table_name, pk_fields, row):
+        if self.is_row_exists(table_name, pk_fields, row):
+            self.update_row(table_name, pk_fields, row)
+        else:
+            self.insert_row(table_name, row)
+
+    def update_row(self, table_name, pk_fields, row):
+        if isinstance(pk_fields, str):
+            pk_fields = [pk_fields]
+        fields = [k for k in row]
+        values = [v for v in row.values()]
+        for pk_field in pk_fields:
+            values.append(row[pk_field])
+        sql = "UPDATE " + table_name + " SET " + ",".join([f + " = %s" for f in fields]) + " WHERE " + " AND ".join([pk_field + " = %s" for pk_field in pk_fields])
+        self.cursor.execute(sql, tuple(values))
+        
 
     def insert_row(self, table_name, row):
         fields = [k for k in row]
@@ -1413,14 +1548,7 @@ class SpiderWrapper(scrapy.Spider):
     def insert_many_with_type(self, table_name, fields, value_types, table_data):
         sql = "INSERT INTO " + table_name + " (" + ",".join(fields) + ") VALUES " + ",".join([ "(" + ",".join(value_types) + ")" for row in table_data ])
         data = tuple([item for sublist in table_data for item in sublist])
-        try:
-            self.cursor.execute(sql, data)
-        except:
-            e = sys.exc_info()
-            print('Exception type ' + str(e[0]) + ' value ' + str(e[1]))
-            traceback.print_tb(e[2])
-            print(fields)
-            print(table_data)
+        self.cursor.execute(sql, data)
 
     def insert_one_with_type(self, table_name, fields, value_types, table_data):
         self.insert_many_with_type(table_name, fields, value_types, [table_data])
