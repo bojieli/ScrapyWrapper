@@ -24,6 +24,7 @@ class ScrapyWrapperConfig():
 		'WEBDRIVER_OPTIONS': {
 		    'service_args': ['--debug=true', '--load-images=false', '--webdriver-loglevel=debug']
 		},
+        'TELNETCONSOLE_PORT': None,
 		'USER_AGENT': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36"
 	}
 
