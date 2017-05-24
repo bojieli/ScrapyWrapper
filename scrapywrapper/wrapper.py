@@ -28,6 +28,7 @@ import urllib
 from collections import deque
 from scrapy import signals
 from scrapy.xlib.pydispatch import dispatcher
+import threading
 
 utf8_parser = lxml.etree.HTMLParser(encoding='utf-8')
 
@@ -1295,8 +1296,10 @@ class SpiderWrapper(scrapy.Spider):
             return
         if self.__accumulative_report_counter == self.config.status_report_batch:
             self.__accumulative_report_counter = 0
+        # report status async to avoid stuck
         try:
-            urllib2.urlopen('http://127.0.0.1:8080/task/' + self.name + '/update_status', urllib.urlencode(self.counter)).read()
+            status_req = urllib2.urlopen('http://127.0.0.1:8080/task/' + self.name + '/update_status', urllib.urlencode(self.counter))
+            threading.Thread(target=status_req.read).start()
         except Exception as e:
             print(e)
 
