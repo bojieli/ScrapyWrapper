@@ -2,6 +2,53 @@
 # -*- coding:utf-8 -*-
 from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
+from scrapy.selector import Selector
+
+def parse_DrugName_Filter(str_temp):
+    find_flag=0
+    if str_temp.find(u'关于')>=0:
+        find_flag = str_temp.find(u'关于')
+        str_temp=str_temp[find_flag+2:]
+        if str_temp.find(u'做好') >= 0:
+            find_flag = str_temp.find(u'做好')
+            str_temp = str_temp[find_flag+2:]
+        if str_temp.find(u'查处') >= 0:
+            find_flag = str_temp.find(u'查处')
+            str_temp = str_temp[find_flag+2:]
+        print '-----------', str_temp
+    elif str_temp.find(u'责令')>=0:
+        find_flag = str_temp.find(u'责令')
+        str_temp=str_temp[find_flag+2:]
+        print '-----------', str_temp
+    elif str_temp.find(u'通告')>=0:
+        find_flag = str_temp.find(u'通告')
+        str_temp = str_temp[find_flag + 2:]
+        print '-----------', str_temp
+    else:
+        pass
+    return str_temp
+
+def parse_CompanyName(meta):
+	if 'CompanyName' in meta and meta['CompanyName']:
+		temp_CompanyName = meta['CompanyName']
+		s_temp = parse_DrugName_Filter(temp_CompanyName)
+		print u'整理：：：：', s_temp
+		if s_temp.find(u'和') >= 0:
+			oldlen = len(s_temp)
+			newlen = len(s_temp.replace(u'公司', u''))
+			if oldlen == newlen + 4:
+				lists = []
+				lists = s_temp.split(u'和')
+				print lists[0], lists[1]
+				meta['$$flag_List'] = lists
+				meta['$$flag_resource'] = 'DrugRecall'
+			else:
+				meta['CompanyName'] = s_temp
+				meta['$$reference_postprocessor'] = True
+		else:
+			meta['CompanyName']=s_temp
+			meta['$$reference_postprocessor'] = True
+	return meta
 
 class ScrapyConfig(ScrapyWrapperConfig):
 	begin_urls = ["http://www.sda.gov.cn/WS01/CL1058/"]
@@ -28,6 +75,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'type': "db",
 			'table_name': "DrugRecall",
 			'unique': ['PublicationDate', 'Headline'],
+			'postprocessor': parse_CompanyName,
 			'upsert': True,
 			'fields': [{
 				'name': "DrugManufacturerID",
@@ -60,6 +108,10 @@ class ScrapyConfig(ScrapyWrapperConfig):
 				'selector_css': 'td.articlecontent3',
 				'strip_tags': False,
 				'download_images': True
+			},{
+				'name': "$$tempList",
+				'strip_tags': False,
+				'selector_xpath': '//*/tr/td/table'
 			}
 			]
 		}

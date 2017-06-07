@@ -2,6 +2,55 @@
 # -*- coding:utf-8 -*-
 from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
+from scrapy.selector import Selector
+
+def parse_CompanyName(meta):
+	if meta['CompanyName'] and meta['CompanyName']!=u'地址' and meta['CompanyName']!=u'存在的主要问题' and meta['CompanyName']!=u'生产地址':
+		print '*****************************************',meta['CompanyName']
+		return meta
+
+	if '$$tempList' in meta and meta['$$tempList']:
+		content = meta['$$tempList']
+		listtr=Selector(text=content, type="html").xpath('//tr').extract()
+		se_flag=''
+		CompanyNameList=[]
+		tr_index=0
+		for index, link in enumerate(listtr):
+			lists = Selector(text=link, type="html").xpath('//td').extract()
+			tr_index=index
+			for index, links in enumerate(lists):
+				aa=Selector(text=links).xpath('//span/text()').extract()
+				if tr_index==0:
+					if index == 0:
+						se_flag = aa[0]
+					pass
+					print aa[0]
+				else:
+					if se_flag == u'企业名称':
+						if index==0:
+							print tr_index,u'企业名称','add',aa[0]
+							CompanyNameList.append(aa[0])
+						else:
+							print tr_index,u'企业名称','view', aa[0]
+					elif se_flag == u'序号':
+						if index==2:
+
+							print tr_index,u'序号','add', aa[0]
+							CompanyNameList.append(aa[0])
+							meta['ProductionAddress'] =''
+							meta['DrugProductionPermitNumber']=''
+							meta['Inspector'] = ''
+						# elif index==3:
+						#	meta['ProductionAddress']=aa[0]
+						# elif index==4:
+						#	meta['DrugProductionPermitNumber']=aa[0]
+						# elif index==6:
+						#	meta['Inspector']=aa[0]
+						else:
+							print tr_index,u'序号','view',index, aa[0]
+		meta['$$flag_List']=CompanyNameList
+		meta['$$flag_resource'] = 'RandomInspection'
+	return meta
 
 class ScrapyConfig(ScrapyWrapperConfig):
 	begin_urls = ["http://www.sda.gov.cn/WS01/CL1850/"]
@@ -28,6 +77,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			'type': "db",
 			'table_name': "RandomInspection",
 			'unique': ['PublicationDate', 'Headline'],
+			'postprocessor': parse_CompanyName,
 			'upsert': True,
 			'fields': [{
 				'name': "DrugManufacturerID",
@@ -94,6 +144,10 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			}, {
 				'name': "FollowUpAction",
 				'selector_table_next_row': u'处理措施'
+			},{
+				'name': "$$tempList",
+				'strip_tags': False,
+				'selector_xpath': '//*/tr/td/table'
 			}
 			]
 		}
