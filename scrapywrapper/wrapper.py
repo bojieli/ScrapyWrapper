@@ -27,7 +27,8 @@ import urllib2
 import urllib
 from collections import deque
 from scrapy import signals
-from scrapy.xlib.pydispatch import dispatcher
+#from scrapy.xlib.pydispatch import dispatcher
+from pydispatch import dispatcher
 import threading
 import random
 
@@ -238,7 +239,7 @@ class SpiderWrapper(scrapy.Spider):
         #self.db_column_types = self._get_db_columns(self.config.table_name)
 
     def _get_db_columns(self, table_name):
-        self.cursor.execute('SP_COLUMNS ' + tablename)
+        self.cursor.execute('SP_COLUMNS ' + table_name)
         cols = {}
         for row in self.cursor:
             cols[row['COLUMN_NAME']] = row['TYPE_NAME']
@@ -852,7 +853,8 @@ class SpiderWrapper(scrapy.Spider):
             if is_cached:
                 self.reference_cache[remote_table]['&&&'.join(local_data)] = row[remote_id_field]
             return True
-        else:
+        
+		else:
             if 'insert_if_not_exist' in res_conf.reference and res_conf.reference['insert_if_not_exist']:
                 # insert only if any of the local field is not None
                 if any(l is not None for l in local_data):
@@ -866,7 +868,24 @@ class SpiderWrapper(scrapy.Spider):
                     return False
             else: # comfigured to not insert
                 return False
-
+		
+		'''
+		else:
+            if 'insert_if_not_exist' in res_conf.reference and res_conf.reference['insert_if_not_exist']:
+                # insert only if any of the local field is not None
+                if any(l is not None for l in local_data):
+                    row = dict(zip(remote_fields, local_data))
+                    gen_uuid = str(uuid.uuid4())
+                    row[remote_id_field] = gen_uuid
+                    self.insert_row(remote_table, row)
+                    record[local_field] = gen_uuid
+                    return True
+                else: # all local data is None, do not insert
+                    return False
+            else: # comfigured to not insert
+                return False
+		'''	
+				
     def _make_date_string(self, year, month, day):
         return ("%04d" % int(year)) + '-' + ("%02d" % int(month)) + '-' + ("%02d" % int(day))
 
@@ -1113,18 +1132,45 @@ class SpiderWrapper(scrapy.Spider):
                 if res_conf.name in meta and meta[res_conf.name] is None:
                     del meta[res_conf.name]
 
-            row = self._remove_metadata_fields(meta)
-            data_guid = None
-            if 'unique' in conf:
-                data_guid = self._get_guid_by_unique_constraint(conf, conf.unique, url, row)
-                if data_guid:
-                    if 'upsert' in conf and conf.upsert:
-                        self._update_db_record(conf, data_guid, url, row, meta['$$body'], meta['$$anomaly_messages'])
-            if not data_guid:
-                data_guid = self._insert_db_record(conf, url, row, meta['$$body'], meta['$$anomaly_messages'])
+            if '$$flag_List' in meta and meta['$$flag_List'] and '$$flag_resource' in meta and meta['$$flag_resource']:
+                flag_List1 = meta['$$flag_List']
+                flag_resource1 = meta['$$flag_resource']
+                oldstr = meta['Headline']
+                for obj in flag_List1:
+                    meta = self._change_metadata_fields(meta, flag_resource1, obj, oldstr)
+                    for res_conf in conf.fields:
+                        if "reference" in res_conf:
+                            status = self._parse_reference_field(res_conf, meta)
+                    row = self._remove_metadata_fields(meta)
+                    data_guid = None
+                    if 'unique' in conf:
+                        data_guid = self._get_guid_by_unique_constraint(conf, conf.unique, url, row)
+                        if data_guid:
+                            if 'upsert' in conf and conf.upsert:
+                                self._update_db_record(conf, data_guid, url, row)
+                    if not data_guid:
+                        data_guid = self._insert_db_record(conf, url, row)
 
-            meta['$$info_id'] = data_guid
-            meta['$$info_table'] = conf.table_name
+                    meta['$$info_id'] = data_guid
+                    meta['$$info_table'] = conf.table_name
+            else:
+                if '$$reference_postprocessor' in meta and meta['$$reference_postprocessor'] == True:
+                    for res_conf in conf.fields:
+                        if "reference" in res_conf:
+                            self._parse_reference_field(res_conf, meta)
+
+                row = self._remove_metadata_fields(meta)
+                data_guid = None
+                if 'unique' in conf:
+                    data_guid = self._get_guid_by_unique_constraint(conf, conf.unique, url, row)
+                    if data_guid:
+                        if 'upsert' in conf and conf.upsert:
+                            self._update_db_record(conf, data_guid, url, row, meta['$$body'], meta['$$anomaly_messages'])
+                if not data_guid:
+                    data_guid = self._insert_db_record(conf, url, row, meta['$$body'], meta['$$anomaly_messages'])
+
+                meta['$$info_id'] = data_guid
+                meta['$$info_table'] = conf.table_name
 
         if '$$image_urls' in meta:
             self._save_image_urls_to_db(meta['$$image_urls'], meta)
@@ -1485,6 +1531,18 @@ class SpiderWrapper(scrapy.Spider):
             if not k.startswith('$$'):
                 new_row[k] = row[k]
         return new_row
+
+    def _change_metadata_fields(self, meta, flag_resource1, obj, oldstr):
+        if 'RandomInspection' == flag_resource1:
+            meta['CompanyName'] = obj
+            meta['Headline'] = oldstr + '-' + obj
+        elif 'DrugRecall' == flag_resource1:
+            meta['CompanyName'] = obj
+            meta['Headline'] = oldstr + '-' + obj
+        elif 'GapAuthentication' == flag_resource1:
+            meta['CompanyName'] = obj
+            meta['Headline'] = oldstr + '-' + obj
+        return meta
 
     def _insert_db_record(self, conf, url, row, source_content='', anomaly_messages=[]):
         if not self.__total_records_reported:

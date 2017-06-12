@@ -3,6 +3,15 @@
 from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
 
+def parse_VarietyName_RegistrationNumber(meta):
+    if 'VarietyName' in meta and meta['VarietyName']:
+        temp_VarietyName=meta['VarietyName']
+        if temp_VarietyName.find(u'药包字')>=0:
+            meta['VarietyName']=meta['RegistrationNumber']
+            meta['RegistrationNumber']=temp_VarietyName
+
+    return meta
+
 class ScrapyConfig(ScrapyWrapperConfig):
 	use_http_proxy = True
 
@@ -28,6 +37,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		"db": {
 			'type': "db",
 			'table_name': "DrugPackagingMaterial",
+			'postprocessor': parse_VarietyName_RegistrationNumber,
 			'unique': ['RegistrationNumber'],
 			'upsert': True,
 			'fields': [
