@@ -9,7 +9,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		for i in range(1,250):
 			yield "http://www.zyctd.com/jiage/1-0-0-" + str(i) + ".html"
 
-	#crawlera_enabled = True
+	#use_http_proxy = True
 	begin_urls = url_generator
 
 	steps = {

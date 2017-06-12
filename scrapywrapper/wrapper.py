@@ -29,6 +29,7 @@ from collections import deque
 from scrapy import signals
 from scrapy.xlib.pydispatch import dispatcher
 import threading
+import random
 
 utf8_parser = lxml.etree.HTMLParser(encoding='utf-8')
 
@@ -187,6 +188,8 @@ class SpiderWrapper(scrapy.Spider):
             request.meta['$$meta'] = http_params['meta']
             request.meta['$$encoding'] = http_params['encoding']
             request.meta['$$referer'] = referer
+            if self.config.use_http_proxy:
+                request.meta['proxy'] = random.choice(self.config.http_proxy_pool)
 
             if ('new_session' in http_params and http_params['new_session']) or (meta and '$$new_session' in meta and meta['$$new_session']):
                 if not hasattr(self, '_session_id'):
@@ -1552,7 +1555,12 @@ class SpiderWrapper(scrapy.Spider):
     def insert_many_with_type(self, table_name, fields, value_types, table_data):
         sql = "INSERT INTO " + table_name + " (" + ",".join(fields) + ") VALUES " + ",".join([ "(" + ",".join(value_types) + ")" for row in table_data ])
         data = tuple([item for sublist in table_data for item in sublist])
-        self.cursor.execute(sql, data)
+        try:
+            self.cursor.execute(sql, data)
+        except Exception as e:
+            print(e)
+            print(sql)
+            print(data)
 
     def insert_one_with_type(self, table_name, fields, value_types, table_data):
         self.insert_many_with_type(table_name, fields, value_types, [table_data])
@@ -1573,7 +1581,7 @@ def SpiderFactory(config, module_name):
         "config": config,
         "__module__": module_name
     }
-    copy_attrs = ["custom_settings", "crawlera_enabled", "crawlera_apikey"]
+    copy_attrs = ["custom_settings", "crawlera_enabled", "crawlera_apikey", "use_http_proxy", "http_proxy_pool"]
     for a in copy_attrs:
         if hasattr(config, a):
             class_dict[a] = getattr(config, a)

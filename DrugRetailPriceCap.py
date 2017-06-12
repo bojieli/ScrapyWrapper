@@ -8,7 +8,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 		for i in range(770000,1,-1):
 			yield 'https://db.yaozh.com/yaopinjiage/' + str(i) + '.html'
 
-	crawlera_enabled = True
+	use_http_proxy = True
 
 	begin_urls = url_generator
 	steps = {

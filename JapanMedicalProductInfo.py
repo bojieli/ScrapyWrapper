@@ -9,7 +9,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
 			#yield 'http://db.yaozh.com/api/index.php/Home/index/yaopinjiage/id/' + str(i)
 			yield 'http://db.yaozh.com/jp/' + str(i) + '.html'
 
-	crawlera_enabled = True
+	use_http_proxy = True
 
 	begin_urls = url_generator
 

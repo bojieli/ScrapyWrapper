@@ -4,7 +4,7 @@ from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
 
 class ScrapyConfig(ScrapyWrapperConfig):
-	#crawlera_enabled = True
+	#use_http_proxy = True
 	begin_urls = ["http://www.pharmnet.com.cn/search/template/yljg_index.htm"]
 	steps = {
 		"begin": {

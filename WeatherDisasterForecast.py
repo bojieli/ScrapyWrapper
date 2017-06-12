@@ -19,6 +19,7 @@ def colormap(color):
 		return None
 
 class ScrapyConfig(ScrapyWrapperConfig):
+	use_http_proxy = True
 	begin_urls = ["http://product.weather.com.cn/alarm/grepalarm_cn.php?_=1483429886627"]
 	steps = {
 		"begin": {
