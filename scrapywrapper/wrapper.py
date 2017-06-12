@@ -850,7 +850,8 @@ class SpiderWrapper(scrapy.Spider):
             if is_cached:
                 self.reference_cache[remote_table]['&&&'.join(local_data)] = row[remote_id_field]
             return True
-        else:
+        
+		else:
             if 'insert_if_not_exist' in res_conf.reference and res_conf.reference['insert_if_not_exist']:
                 # insert only if any of the local field is not None
                 if any(l is not None for l in local_data):
@@ -864,7 +865,24 @@ class SpiderWrapper(scrapy.Spider):
                     return False
             else: # comfigured to not insert
                 return False
-
+		
+		'''
+		else:
+            if 'insert_if_not_exist' in res_conf.reference and res_conf.reference['insert_if_not_exist']:
+                # insert only if any of the local field is not None
+                if any(l is not None for l in local_data):
+                    row = dict(zip(remote_fields, local_data))
+                    gen_uuid = str(uuid.uuid4())
+                    row[remote_id_field] = gen_uuid
+                    self.insert_row(remote_table, row)
+                    record[local_field] = gen_uuid
+                    return True
+                else: # all local data is None, do not insert
+                    return False
+            else: # comfigured to not insert
+                return False
+		'''	
+				
     def _make_date_string(self, year, month, day):
         return ("%04d" % int(year)) + '-' + ("%02d" % int(month)) + '-' + ("%02d" % int(day))
 
