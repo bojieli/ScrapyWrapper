@@ -3,27 +3,27 @@
 class ScrapyWrapperConfig():
     custom_settings = {
         'DOWNLOAD_DELAY': 0,
-        'CONCURRENT_REQUESTS': 16,
+        'CONCURRENT_REQUESTS': 1,
         #DOWNLOADER_MIDDLEWARES = {
         #    'scrapywrapper.webkit_downloader.WebkitDownloader': 1000,
         #},
-        'DOWNLOADER_MIDDLEWARES': {
-            'scrapy_crawlera.CrawleraMiddleware': 610
-        },
-        'DOWNLOAD_HANDLERS': {
-            'http': 'scrapy_webdriver.download.WebdriverDownloadHandler',
-            'https': 'scrapy_webdriver.download.WebdriverDownloadHandler',
-        },
-        'SPIDER_MIDDLEWARES': {
-            'scrapy_webdriver.middlewares.WebdriverSpiderMiddleware': 543,
-        },
-        'WEBDRIVER_BROWSER': 'PhantomJS', # Or any other from selenium.webdriver
-                                         # or 'your_package.CustomWebdriverClass'
-                                         # or an actual class instead of a string.
-        # Optional passing of parameters to the webdriver
-        'WEBDRIVER_OPTIONS': {
-            'service_args': ['--debug=true', '--load-images=false', '--webdriver-loglevel=debug']
-        },
+        #'DOWNLOADER_MIDDLEWARES': {
+        #    'scrapy_crawlera.CrawleraMiddleware': 610
+        #},
+        #'DOWNLOAD_HANDLERS': {
+        #    'http': 'scrapy_webdriver.download.WebdriverDownloadHandler',
+        #    'https': 'scrapy_webdriver.download.WebdriverDownloadHandler',
+        #},
+        #'SPIDER_MIDDLEWARES': {
+        #    'scrapy_webdriver.middlewares.WebdriverSpiderMiddleware': 543,
+        #},
+        #'WEBDRIVER_BROWSER': 'PhantomJS', # Or any other from selenium.webdriver
+        #                                 # or 'your_package.CustomWebdriverClass'
+        #                                 # or an actual class instead of a string.
+        ## Optional passing of parameters to the webdriver
+        #'WEBDRIVER_OPTIONS': {
+        #    'service_args': ['--debug=true', '--load-images=false', '--webdriver-loglevel=debug']
+        #},
         'TELNETCONSOLE_PORT': None,
         'USER_AGENT': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36"
     }
@@ -31,33 +31,29 @@ class ScrapyWrapperConfig():
     crawlera_apikey = 'c8a6eb2f7cab4450806b9ea73187391a'
 
     db = {
-        'type': "mssql",
-        'server': "114.215.255.52",
-        'user': "AddDataUser",
-        'password': "Dv*#d~18K",
-        'name': "DB_Medicine"
+        'type': "mysql",
+        'server': "127.0.0.1",
+        'user': "crawler",
+        'password': "crawler",
+        'name': "TeacherInfo"
     }
 
     file_storage = {
-        'type': "ftp",
-        'server': "cy.zaixianshop.com",
-        'user': "picuser",
-        'password': "Ftp@*^#19",
-        'basedir': ""
+        'type': "local"
     }
 
     file_db_table = {
-        'table_name': 'PictrueInfo',
-        'info_id_field': 'InfoID',
-        'path_field': 'PicUrl',
-        'info_table_field': 'InfoTable'
+        'table_name': 'image_info',
+        'info_id_field': 'ID',
+        'path_field': 'url',
+        'info_table_field': 'info_table'
     }
 
     url_table = {
-        'table_name': "OriginalWebUrl",
-        'id_field': "ResID",
-        'url_field': "WebURL",
-        'time_field': "UpdateTime"
+        'table_name': "original_web_url",
+        'id_field': "ID",
+        'url_field': "url",
+        'time_field': "update_time"
     }
 
     default_guid_field = "ID"

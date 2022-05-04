@@ -1,7 +1,6 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding:utf-8 -*-
 import scrapy
-import pymssql
 import uuid
 import re
 import json
@@ -15,15 +14,16 @@ import cssselect
 import html2text
 import traceback
 import datetime
-from HTMLParser import HTMLParser
-from config import ScrapyWrapperConfig
-from urlparse import urljoin
+from html.parser import HTMLParser
+from .config import ScrapyWrapperConfig
+from urllib.parse import urljoin
 from .helper import ScrapyHelper, AttrDict, dict2json
 import types
 import copy
-from scrapy_webdriver.http import WebdriverRequest
+#from scrapy_webdriver.http import WebdriverRequest
 import os
-import urllib2
+from urllib.request import urlopen
+from urllib.parse import urlencode
 import urllib
 from collections import deque
 from scrapy import signals
@@ -231,11 +231,17 @@ class SpiderWrapper(scrapy.Spider):
     def _init_db(self):
         if not self.config.db:
             raise "Database config not specified"
-        if self.config.db.type != 'mssql':
-            raise "Only mssql is supported!"
-        self.dbconn = pymssql.connect(self.config.db.server, self.config.db.user, self.config.db.password, self.config.db.name, charset="utf8", timeout=60, login_timeout=60, autocommit=True, as_dict=True)
-        self.cursor = self.dbconn.cursor()
-        self.cursor.execute('SET ANSI_WARNINGS OFF')
+        if self.config.db.type == 'mssql':
+            import pymssql
+            self.dbconn = pymssql.connect(self.config.db.server, self.config.db.user, self.config.db.password, self.config.db.name, charset="utf8", timeout=60, login_timeout=60, autocommit=True, as_dict=True)
+            self.cursor = self.dbconn.cursor()
+            self.cursor.execute('SET ANSI_WARNINGS OFF')
+        elif self.config.db.type == 'mysql':
+            import pymysql
+            self.db = pymysql.connect(host=self.config.db.server, user=self.config.db.user, password=self.config.db.password, database=self.config.db.name)
+            self.cursor = self.db.cursor()
+        else:
+            raise "Only mssql and mysql are supported!"
         #self.db_column_types = self._get_db_columns(self.config.table_name)
 
     def _get_db_columns(self, table_name):
@@ -246,14 +252,15 @@ class SpiderWrapper(scrapy.Spider):
         return cols
 
     def _strip_tags(self, to_strip, text):
-        if to_strip:
-            convertor = html2text.HTML2Text()
-            convertor.ignore_links = True
-            try:
+        try:
+            if to_strip:
+                convertor = html2text.HTML2Text()
+                convertor.ignore_links = True
                 text = convertor.handle(text)
-            except:
-                pass
-        return text.replace("\\n", "\n").strip()
+            return text.replace("\\n", "\n").strip()
+        except:
+            print(text)
+            return text
 
     def _prepare_res_conf(self, res_conf):
         if "selector_css" in res_conf:
@@ -323,14 +330,14 @@ class SpiderWrapper(scrapy.Spider):
             # selectors
             if "selector_table" in res_conf:
                 doc = lxml.html.fromstring(response_text, parser=utf8_parser)
-                col_keys = [ lxml.etree.tostring(field, method='text', encoding=unicode).strip() for field in doc.xpath('//tr[1]/td')[1:] ]
+                col_keys = [ lxml.etree.tostring(field, method='text', encoding='unicode').strip() for field in doc.xpath('//tr[1]/td')[1:] ]
                 records = [ { "$$key": key } for key in col_keys ]
                 for row in doc.xpath('//tr')[1:]:
-                    row_key = lxml.etree.tostring(row.xpath('.//td[1]')[0], method='text', encoding=unicode).strip()
+                    row_key = lxml.etree.tostring(row.xpath('.//td[1]')[0], method='text', encoding='unicode').strip()
                     col_id = 0
                     for col in row.xpath('.//td')[1:]:
                         try:
-                            records[col_id][row_key] = lxml.etree.tostring(col, method='text', encoding=unicode).strip()
+                            records[col_id][row_key] = lxml.etree.tostring(col, method='text', encoding='unicode').strip()
                             col_id += 1
                         except: # no such column
                             break
@@ -344,7 +351,7 @@ class SpiderWrapper(scrapy.Spider):
                     for col in row.xpath('.//td|.//th'):
                         if len(matrix) <= col_count:
                             matrix.append([])
-                        matrix[col_count].append(lxml.etree.tostring(col, method='text', encoding=unicode))
+                        matrix[col_count].append(lxml.etree.tostring(col, method='text', encoding='unicode'))
                         col_count += 1
 
                 try:
@@ -370,18 +377,20 @@ class SpiderWrapper(scrapy.Spider):
                             for m in doc.xpath(p):
                                 try:
                                     serialize_method = 'text' if to_strip else 'html'
-                                    results.append(lxml.etree.tostring(m, method=serialize_method, encoding=unicode))
+                                    results.append(lxml.etree.tostring(m, method=serialize_method, encoding='unicode'))
                                 except:
-                                    results.append(self._strip_tags(to_strip, unicode(m)))
+                                    results.append(self._strip_tags(to_strip, str(m)))
                     else:
                         for m in doc.xpath(res_conf.selector_xpath):
                             try:
                                 serialize_method = 'text' if to_strip else 'html'
-                                results.append(lxml.etree.tostring(m, method=serialize_method, encoding=unicode))
+                                results.append(lxml.etree.tostring(m, method=serialize_method, encoding='unicode'))
                             except:
-                                results.append(self._strip_tags(to_strip, unicode(m)))
+                                results.append(self._strip_tags(to_strip, str(m)))
                 except:
-                    raise scrapy.exceptions.CloseSpider('invalid selector_xpath ' + str(res_conf.selector_xpath))
+                    print('invalid selector_xpath ' + str(res_conf.selector_xpath))
+                    raise scrapy.exceptions.CloseSpider()
+                print('Number of results:' + str(len(results)) + " for xpath: " + res_conf.selector_xpath)
 
             elif "selector_json" in res_conf:
                 results = [] # default empty
@@ -533,7 +542,7 @@ class SpiderWrapper(scrapy.Spider):
 
         if body is None:
             try:
-                body = response.body_as_unicode()
+                body = response.text
             except:
                 body = response.body
 
@@ -598,12 +607,12 @@ class SpiderWrapper(scrapy.Spider):
                             el.attrib.clear()
                             el.tag = '||ToRemove||'
 
-                        result = lxml.etree.tostring(el, method=serialize_method, encoding=unicode).strip()
+                        result = lxml.etree.tostring(el, method=serialize_method, encoding='unicode').strip()
                         if not to_strip:
                             assert result.startswith('<'+el.tag+'>') and result.endswith('</'+el.tag+'>')
                             result = result[len('<'+el.tag+'>'):-len('</'+el.tag+'>')]
                     except:
-                        result = self._strip_tags(to_strip, unicode(matches[0]))
+                        result = self._strip_tags(to_strip, str(matches[0]))
 
             elif "selector_json" in res_conf:
                 obj = None
@@ -662,7 +671,7 @@ class SpiderWrapper(scrapy.Spider):
                         if type(o) is list:
                             o = o[0]
 
-                        if type(o) is str or type(o) is unicode:
+                        if type(o) is str:
                             result = o
                             break
                         elif type(o) is int or type(o) is float:
@@ -700,11 +709,11 @@ class SpiderWrapper(scrapy.Spider):
             self.log_anomaly(meta, 8, res_conf.name, str(e[0]) + " " + str(e[1]) + " " + str(res_conf), result)
 
         if result is not None:
-            if type(result) is not unicode:
-                try:
-                    result = result.decode('utf-8', 'ignore')
-                except:
-                    result = unicode(result)
+            #if type(result) is not unicode:
+            #    try:
+            #        result = result.decode('utf-8', 'ignore')
+            #    except:
+            #        result = unicode(result)
             result = result.strip()
 
         if 'debug' in res_conf:
@@ -712,7 +721,7 @@ class SpiderWrapper(scrapy.Spider):
             print(res_conf)
             print('-------- DEBUG Parse field result ------')
             try:
-                print(result.encode('utf-8'))
+                print(result)
             except:
                 print(repr(result))
             print('======== END DEBUG Parse field ======')
@@ -983,7 +992,7 @@ class SpiderWrapper(scrapy.Spider):
             response.url = urljoin(meta['$$url'], m)
             response.meta = meta
             try:
-                response.body_stream = urllib2.urlopen(response.url)
+                response.body_stream = urlopen(response.url)
             except:
                 print('Failed to download image "' + response.url + '" in article "' + meta['$$url'] + '"')
                 self.log_anomaly(meta, 6, None, None, response.url)
@@ -1020,7 +1029,7 @@ class SpiderWrapper(scrapy.Spider):
                 except:
                     parsed = None
 
-        if type(parsed) is not str and type(parsed) is not unicode and parsed is not None:
+        if type(parsed) is not str and parsed is not None:
             parsed = str(parsed)
         if "data_validator" in res_conf and callable(res_conf.data_validator):
             if not res_conf.data_validator(parsed, meta):
@@ -1224,6 +1233,8 @@ class SpiderWrapper(scrapy.Spider):
             os.mkdir(path)
 
     def _save_file_to_local(self, filename, conf, data):
+        if self.config.file_storage.basedir:
+            filename = os.path.join(self.config.file_storage.basedir, filename)
         self._local_mkdir_recursive(filename)
         f = open(filename, 'wb')
         f.write(data)
@@ -1348,6 +1359,8 @@ class SpiderWrapper(scrapy.Spider):
                 step_config.type = "http" # default
 
             result = self._parse_db_record(step_config, url, *result)
+            if not result:
+                continue
             # the returned result has more metadata
             if step_config.type == "db":
                 if result:
@@ -1373,7 +1386,7 @@ class SpiderWrapper(scrapy.Spider):
             self.__accumulative_report_counter = 0
         # report status async to avoid stuck
         try:
-            status_req = urllib2.urlopen('http://127.0.0.1:8080/task/' + self.name + '/update_status', urllib.urlencode(self.counter))
+            status_req = urlopen('http://127.0.0.1:8080/task/' + self.name + '/update_status', urlencode(self.counter))
             threading.Thread(target=status_req.read).start()
         except Exception as e:
             print(e)
@@ -1485,6 +1498,7 @@ class SpiderWrapper(scrapy.Spider):
         try:
             SQL = "UPDATE " + conf.table_name + " SET " + ','.join(update_fields) + " WHERE " + conf.guid_field + " = %s"
             self.cursor.execute(SQL, tuple(update_data + [guid]))
+            self.db.commit()
         except Exception as e:
             print('======== ERROR Database operation ======')
             print(e)
@@ -1510,7 +1524,7 @@ class SpiderWrapper(scrapy.Spider):
             print('======== END DEBUG database operation ======')
 
         self._insert_url_table(conf, guid, url, action="Updated")
-        self._write_datalog(conf, guid, row, url, source_content, anomaly_messages, state=2)
+        #self._write_datalog(conf, guid, row, url, source_content, anomaly_messages, state=2)
         return guid
 
 
@@ -1576,7 +1590,7 @@ class SpiderWrapper(scrapy.Spider):
                 'comment': str(e)
             })
         self._insert_url_table(conf, data_guid, url, action="Inserted")
-        self._write_datalog(conf, data_guid, row, url, source_content, anomaly_messages, state=1)
+        #self._write_datalog(conf, data_guid, row, url, source_content, anomaly_messages, state=1)
         return data_guid
 
     def is_row_exists(self, table_name, pk_fields, row):
@@ -1602,6 +1616,7 @@ class SpiderWrapper(scrapy.Spider):
             values.append(row[pk_field])
         sql = "UPDATE " + table_name + " SET " + ",".join([f + " = %s" for f in fields]) + " WHERE " + " AND ".join([pk_field + " = %s" for pk_field in pk_fields])
         self.cursor.execute(sql, tuple(values))
+        self.db.commit()
         
 
     def insert_row(self, table_name, row):
@@ -1615,6 +1630,7 @@ class SpiderWrapper(scrapy.Spider):
         data = tuple([item for sublist in table_data for item in sublist])
         try:
             self.cursor.execute(sql, data)
+            self.db.commit()
         except Exception as e:
             print(e)
             print(sql)
@@ -1627,8 +1643,8 @@ class SpiderWrapper(scrapy.Spider):
         try:
             self.cursor.execute('SELECT COUNT(*) as cnt FROM ' + table_name)
             for row in self.cursor:
-                print('Total records in table ' + table_name + ' : ' + str(row['cnt']))
-                return int(row['cnt'])
+                print('Total records in table ' + table_name + ' : ' + str(row[0]))
+                return int(row[0])
         except Exception as e:
             print(e)
 
