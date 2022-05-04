@@ -5,6 +5,7 @@ from scrapywrapper.config import ScrapyWrapperConfig
 
 class ScrapyConfig(ScrapyWrapperConfig):
     #use_http_proxy = False
+    file_basedir = 'teacher_images/TUM'
     begin_urls = ["https://www.professoren.tum.de/en/professors/alphabetical"]
     steps = {
         "begin": {
@@ -45,7 +46,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
                 'required': True
             }, {
                 'name': 'image',
-                'selector_xpath': '//div[@class="professor__single--image"]/img/@src'
+                'selector_xpath': '//div[@class="professor__single--image"]/img/@src',
+                'download_single_url': True
             }],
             'res': {
                 'selector_xpath': '//h3[contains(text(), "Contact Details")]/../p/a/@href',
