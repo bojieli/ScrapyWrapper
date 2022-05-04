@@ -992,7 +992,7 @@ class SpiderWrapper(scrapy.Spider):
             response.url = urljoin(meta['$$url'], m)
             response.meta = meta
             try:
-                response.body_stream = urlopen(response.url)
+                response.body_stream = urlopen(response.url.replace('\n', ''))
             except Exception as e:
                 print('Failed to download image "' + response.url + '" in article "' + meta['$$url'] + '"' + ': ' + str(e))
                 self.log_anomaly(meta, 6, None, None, response.url)
@@ -1017,7 +1017,7 @@ class SpiderWrapper(scrapy.Spider):
         response.url = urljoin(meta['$$url'], response_text)
         response.meta = meta
         try:
-            response.body_stream = urlopen(response.url)
+            response.body_stream = urlopen(response.url.replace('\n', ''))
         except Exception as e:
             print('Failed to download URL "' + response.url + '" in article "' + meta['$$url'] + '"' + ': ' + str(e))
             self.log_anomaly(meta, 6, None, None, response.url)
@@ -1285,7 +1285,7 @@ class SpiderWrapper(scrapy.Spider):
             _, file_ext = os.path.splitext(response.url)
         file_ext = file_ext.strip('.')
 
-        if file_ext:
+        if file_ext and file_ext.isalpha():
             filepath = file_dir + '/' + file_uuid + '.' + file_ext
         else:
             filepath = file_dir + '/' + file_uuid
