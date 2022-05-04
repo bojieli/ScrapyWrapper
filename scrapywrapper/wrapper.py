@@ -23,7 +23,7 @@ import copy
 #from scrapy_webdriver.http import WebdriverRequest
 import os
 from urllib.request import urlopen
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urljoin
 import urllib
 from collections import deque
 from scrapy import signals
@@ -993,8 +993,8 @@ class SpiderWrapper(scrapy.Spider):
             response.meta = meta
             try:
                 response.body_stream = urlopen(response.url)
-            except:
-                print('Failed to download image "' + response.url + '" in article "' + meta['$$url'] + '"')
+            except Exception as e:
+                print('Failed to download image "' + response.url + '" in article "' + meta['$$url'] + '"' + ': ' + str(e))
                 self.log_anomaly(meta, 6, None, None, response.url)
                 continue
             response.headers = {}
@@ -1009,6 +1009,29 @@ class SpiderWrapper(scrapy.Spider):
         meta['$$image_urls'].extend(image_urls)
         return response_text
     
+    def _download_single_url(self, response_text, meta):
+        if not response_text:
+            return response_text
+
+        response = AttrDict()
+        response.url = urljoin(meta['$$url'], response_text)
+        response.meta = meta
+        try:
+            response.body_stream = urlopen(response.url)
+        except Exception as e:
+            print('Failed to download URL "' + response.url + '" in article "' + meta['$$url'] + '"' + ': ' + str(e))
+            self.log_anomaly(meta, 6, None, None, response.url)
+            return response_text
+
+        response.headers = {}
+        record = self._save_file_record(response)
+        if record:
+            filepath, _ = record
+            print(filepath)
+            return filepath
+        else:
+            return response_text
+
     def _parse_db_field(self, res_conf, result, meta):
         if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
             result = res_conf.data_preprocessor(result, meta)
@@ -1040,6 +1063,8 @@ class SpiderWrapper(scrapy.Spider):
             parsed = res_conf.data_postprocessor(parsed, meta)
         if "download_images" in res_conf and res_conf.download_images:
             parsed = self._download_images_from_html(parsed, meta)
+        if "download_single_url" in res_conf and res_conf.download_single_url:
+            parsed = self._download_single_url(parsed, meta)
         if "required" in res_conf and res_conf.required:
             if parsed == None or len(parsed) == 0:
                 if not "mute_warnings" in res_conf:
@@ -1226,19 +1251,22 @@ class SpiderWrapper(scrapy.Spider):
         return True
 
     def _local_mkdir_recursive(self, path):
-        sub_path = os.path.dirname(path)
-        if not os.path.exists(sub_path):
-            self._local_mkdir_recursive(sub_path)
-        if not os.path.exists(path):
-            os.mkdir(path)
+        try:
+            os.makedirs(os.path.dirname(path), 0o755)
+        except:
+            pass
 
-    def _save_file_to_local(self, filename, conf, data):
-        if self.config.file_storage.basedir:
-            filename = os.path.join(self.config.file_storage.basedir, filename)
-        self._local_mkdir_recursive(filename)
-        f = open(filename, 'wb')
-        f.write(data)
-        f.close()
+    def _save_file_to_local(self, filename, conf, data_stream):
+        try:
+            if self.config.file_storage.basedir:
+                filename = os.path.join(self.config.file_storage.basedir, filename)
+            self._local_mkdir_recursive(filename)
+            f = open(filename, 'wb')
+            f.write(data_stream.read())
+            f.close()
+            return True
+        except:
+            return False
 
     def _save_file_record(self, response):
         self.counter.saved_images += 1
@@ -1246,7 +1274,7 @@ class SpiderWrapper(scrapy.Spider):
 
         conf = self.config.file_storage
         file_uuid = str(uuid.uuid4())
-        file_dir = str(datetime.date.today().year) + '/' + str(datetime.date.today().month)
+        file_dir = self.config.file_basedir
         file_ext = None
         if "Content-Type" in response.headers:
             mimetype = str(response.headers["Content-Type"])
@@ -1263,20 +1291,13 @@ class SpiderWrapper(scrapy.Spider):
             filepath = file_dir + '/' + file_uuid
 
         if conf.type == "ftp":
-            if hasattr(response, 'body_stream'):
-                if not self._save_file_to_ftp(filepath, conf, response.body_stream):
-                    return None
-            else:
-                import StringIO
-                if not self._save_file_to_ftp(filepath, conf, StringIO.StringIO(response.body)):
-                    return None
-
+            if not self._save_file_to_ftp(filepath, conf, response.body_stream):
+                return None
         elif conf.type == "local":
-            if hasattr(response, 'body_stream'):
-                response.body = response.body_stream.read()
-            self._save_file_to_local(conf, filepath, response.body)
+            if not self._save_file_to_local(filepath, conf, response.body_stream):
+                return None
         else:
-            raise scrapy.exceptions.CloseSpider('undefined record type ' + conf.type)
+            raise scrapy.exceptions.CloseSpider('undefined file record type ' + conf.type)
 
         print("[" + self.name + "] Saved file " + filepath + " (URL: " + response.url + " )")
         return (filepath, response.url)
@@ -1419,7 +1440,7 @@ class SpiderWrapper(scrapy.Spider):
         constraint_data = [ row[field] if field in row else '' for field in unique ]
         self.cursor.execute("SELECT " + conf.guid_field + " FROM " + conf.table_name + " WHERE " + ' AND '.join(constraint_fields), tuple(constraint_data))
         for row in self.cursor:
-            return row[conf.guid_field]
+            return row[0]
         return None
         
     def _insert_url_table(self, conf, data_guid, url, action="Inserted"):

@@ -39,7 +39,8 @@ class ScrapyWrapperConfig():
     }
 
     file_storage = {
-        'type': "local"
+        'type': "local",
+        'basedir': ''
     }
 
     file_db_table = {
