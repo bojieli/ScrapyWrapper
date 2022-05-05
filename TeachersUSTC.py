@@ -20,8 +20,6 @@ def find_email(name):
     return teacher_emails[name] if name in teacher_emails else None
 
 def extract_homepage(haystack, needle, check_http=False):
-    print('Info: ' + haystack)
-    print('Find: ' + needle)
     index = haystack.find(needle)
     if index == -1:
         return None
@@ -33,7 +31,7 @@ def extract_homepage(haystack, needle, check_http=False):
             if check_http:
                 return result if result.startswith('http') else None
             else:
-                return result
+                return None if '：' in result else result
         else:
             return None
 
