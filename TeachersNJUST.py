@@ -2,21 +2,7 @@
 # -*- coding:utf-8 -*-
 from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
-from pypinyin import lazy_pinyin
-
-
-def to_pinyin_name(name_zh):
-    name_list = lazy_pinyin(name_zh)
-    xing = name_list[0].capitalize()
-    ming = ""
-    for m in name_list[1:]:
-        ming += m
-    if ming == "":
-        name_en = xing
-    else:
-        name_en = xing + " " + ming.capitalize()
-    return name_en
-
+from scrapywrapper.helper import to_pinyin_name
 
 class ScrapyConfig(ScrapyWrapperConfig):
     #use_http_proxy = False
