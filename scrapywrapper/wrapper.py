@@ -966,7 +966,6 @@ class SpiderWrapper(scrapy.Spider):
         except:
             return None
 
-
     def _get_image_urls_from_doc(self, doc):
         for m in doc.xpath('//img/@src'):
             yield str(m)

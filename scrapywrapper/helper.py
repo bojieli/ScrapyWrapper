@@ -1,6 +1,7 @@
 #?usr/bin/python
 # -*- coding:utf-8 -*-
 import json
+from pypinyin import lazy_pinyin
 
 class ScrapyHelper():
 	def begin_url_range(self, prefix, suffix, from_id, to_id):
@@ -145,4 +146,17 @@ def dict2json(d):
 
     s += '}'
     return s
+
+def to_pinyin_name(name_zh):
+    name_list = lazy_pinyin(name_zh)
+    xing = name_list[0].capitalize()
+    ming = ""
+    for m in name_list[1:]:
+        ming += m
+    if ming == "":
+        name_en = xing
+    else:
+        name_en = xing + " " + ming.capitalize()
+    return name_en
+
 
