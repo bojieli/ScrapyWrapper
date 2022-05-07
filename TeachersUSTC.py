@@ -16,8 +16,14 @@ with open('teachers.csv', 'r') as f:
             print('Duplicate teacher name: ' + name + ' ' + email)
         teacher_emails[name] = email
 
-def find_email(name):
-    return teacher_emails[name] if name in teacher_emails else None
+def find_email(name, meta):
+    text = meta['$$body']
+    regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    result = re.search(regex, text)
+    if result:
+        return result.group(0).strip()
+    else:
+        return teacher_emails[name] if name in teacher_emails else None
 
 def extract_homepage(haystack, needle, check_http=False):
     index = haystack.find(needle)
@@ -60,7 +66,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
             'fields': [{
                 'name': "email",
                 'selector_xpath': '//td[@class="ustc03"]',
-                'data_postprocessor': lambda name,_: find_email(name)
+                'data_postprocessor': lambda name,meta: find_email(name, meta),
+                'required': True
             }, {
                 'name': 'name',
                 'selector_xpath': '//td[@class="ustc03"]',
