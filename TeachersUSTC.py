@@ -19,11 +19,15 @@ with open('teachers.csv', 'r') as f:
 def find_email(name, meta):
     text = meta['$$body']
     regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-    result = re.search(regex, text)
-    if result:
-        return result.group(0).strip()
-    else:
-        return teacher_emails[name] if name in teacher_emails else None
+    result = re.findall(regex, text)
+    for email in result:
+        if email.strip() == 'gradschl@ustc.edu.cn':
+            continue
+        else:
+            return email.strip()
+
+    # not found
+    return teacher_emails[name] if name in teacher_emails else None
 
 def extract_homepage(haystack, needle, check_http=False):
     index = haystack.find(needle)
