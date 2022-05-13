@@ -3,6 +3,8 @@
 from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
 from scrapywrapper.helper import to_pinyin_name
+from urllib.request import urlopen
+import lxml.html
 import csv
 import re
 
@@ -16,8 +18,7 @@ with open('teachers.csv', 'r') as f:
             print('Duplicate teacher name: ' + name + ' ' + email)
         teacher_emails[name] = email
 
-def find_email(name, meta):
-    text = meta['$$body']
+def find_email_from_content(text):
     regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
     result = re.findall(regex, text)
     for email in result:
@@ -25,19 +26,50 @@ def find_email(name, meta):
             continue
         else:
             return email.strip()
+    return None
 
-    # not found
-    return teacher_emails[name] if name in teacher_emails else None
+def find_email(name, meta):
+    text = meta['$$body']
+    email = find_email_from_content(text)
+    if email:
+        print('Teacher ' + name + ': Found email ' + email + ' from content')
+        return email
+
+    # email not found in body
+    homepage = extract_homepage(text, '个人主页：', check_http=True)
+    if homepage:
+        try:
+            content = urlopen(homepage, timeout=10).read().decode('utf-8')
+            text = lxml.html.document_fromstring(content).text_content()
+            email = find_email_from_content(text)
+            if email:
+                print('Teacher ' + name + ': Found email ' + email + ' from homepage: ' + homepage)
+                return email
+            else:
+                print('Teacher ' + name + ': EMAIL NOT FOUND from homepage: ' + homepage)
+        except Exception as e:
+            print(e)
+
+    # homepage not found
+    if name in teacher_emails:
+        print('Teacher ' + name + ': Found email ' + teacher_emails[name] + ' from icourse DB')
+        return teacher_emails[name]
+    else:
+        print('Teacher ' + name + ' EMAIL NOT FOUND')
+        return None
 
 def extract_homepage(haystack, needle, check_http=False):
+    haystack = lxml.html.document_fromstring(haystack).text_content()
     index = haystack.find(needle)
     if index == -1:
+        print('Homepage not found!')
         return None
     else:
         substr = haystack[index + len(needle):].strip()
         result = re.search(r'[\s]*[^\s]+', substr)
         if result:
             result = result.group(0).strip()
+            print('Homepage: ' + result)
             if check_http:
                 return result if result.startswith('http') else None
             else:

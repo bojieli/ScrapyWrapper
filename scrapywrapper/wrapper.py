@@ -991,7 +991,7 @@ class SpiderWrapper(scrapy.Spider):
             response.url = urljoin(meta['$$url'], m)
             response.meta = meta
             try:
-                response.body_stream = urlopen(response.url.replace('\n', ''))
+                response.body_stream = urlopen(response.url.replace('\n', ''), timeout=10)
             except Exception as e:
                 print('Failed to download image "' + response.url + '" in article "' + meta['$$url'] + '"' + ': ' + str(e))
                 self.log_anomaly(meta, 6, None, None, response.url)
@@ -1016,7 +1016,7 @@ class SpiderWrapper(scrapy.Spider):
         response.url = urljoin(meta['$$url'], response_text)
         response.meta = meta
         try:
-            response.body_stream = urlopen(response.url.replace('\n', ''))
+            response.body_stream = urlopen(response.url.replace('\n', ''), timeout=10)
         except Exception as e:
             print('Failed to download URL "' + response.url + '" in article "' + meta['$$url'] + '"' + ': ' + str(e))
             self.log_anomaly(meta, 6, None, None, response.url)
@@ -1406,7 +1406,7 @@ class SpiderWrapper(scrapy.Spider):
             self.__accumulative_report_counter = 0
         # report status async to avoid stuck
         try:
-            status_req = urlopen('http://127.0.0.1:8080/task/' + self.name + '/update_status', urlencode(self.counter))
+            status_req = urlopen('http://127.0.0.1:8080/task/' + self.name + '/update_status', urlencode(self.counter), timeout=10)
             threading.Thread(target=status_req.read).start()
         except Exception as e:
             print(e)
