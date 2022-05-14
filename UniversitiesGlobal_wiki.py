@@ -3,6 +3,7 @@
 from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
 import re
+import lxml.html
 
 def check_domain(url, meta):
     results = re.match(r'^https?://([a-zA-Z0-9.]+)', url)
@@ -18,6 +19,11 @@ def check_domain(url, meta):
         return results.group(0)
     if domain.startswith('www.'):
         domain = domain[4:]
+    if domain == 'web.archive.org':
+        results = re.search(r'web.archive.org/.*/(https?://.*)', url)
+        if not results:
+            return None
+        return check_domain(results.group(1), meta)
     return domain
 
 def extract_abbrev(body, meta):
@@ -39,13 +45,20 @@ def extract_abbrev(body, meta):
             return word
     return None
 
+def extract_wiki_body(content, meta):
+    html = lxml.html.document_fromstring(content)
+    for nav in html.xpath('//div[@role="navigation"]'):
+        nav.getparent().remove(nav)
+    return lxml.etree.tostring(html, method='html', encoding='unicode')
+
+
 class ScrapyConfig(ScrapyWrapperConfig):
-    file_basedir = 'university_logos/global'
+    file_basedir = 'university_logos/global_new'
     begin_urls = ["https://en.wikipedia.org/wiki/Lists_of_universities_and_colleges_by_country"]
     steps = {
         "begin": {
             'res': {
-                'selector_xpath': '//li',
+                'selector_xpath': '//div[@id="bodyContent"]//li',
                 'next_step': 'region_list'
             },
         },
@@ -67,17 +80,20 @@ class ScrapyConfig(ScrapyWrapperConfig):
             'res': {
                 'selector_xpath': '//li/a/@href',
                 'selector_regex': '(.*/wiki/.*)',
+                'data_validator': lambda url,_: url.find('Template:') == -1 and url.find('Category:') == -1,
                 'next_step': 'university'
             }
         },
         'university': {
             'res': {
+                'selector_xpath': '//div[@id="content"]',
+                'data_postprocessor': extract_wiki_body,
                 'next_step': 'db'
             }
         },
         "db": {
             'type': "db",
-            'table_name': "universities_global",
+            'table_name': "universities_global_new",
             'unique': ['name'],
             'upsert': True,
             'print_record': True,
