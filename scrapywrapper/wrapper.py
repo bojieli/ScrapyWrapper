@@ -975,6 +975,12 @@ class SpiderWrapper(scrapy.Spider):
             if re_m:
                 yield str(m)
 
+    def _correct_url(self, url):
+        url = url.replace('\n', '').replace('\r', '')
+        if url.startswith('//'):
+            url = 'http:' + url
+        return url
+
     def _download_images_from_html(self, response_text, meta):
         if not response_text:
             return response_text
@@ -991,7 +997,7 @@ class SpiderWrapper(scrapy.Spider):
             response.url = urljoin(meta['$$url'], m)
             response.meta = meta
             try:
-                response.body_stream = urlopen(response.url.replace('\n', ''), timeout=10)
+                response.body_stream = urlopen(self._correct_url(response.url), timeout=10)
             except Exception as e:
                 print('Failed to download image "' + response.url + '" in article "' + meta['$$url'] + '"' + ': ' + str(e))
                 self.log_anomaly(meta, 6, None, None, response.url)
@@ -1016,7 +1022,7 @@ class SpiderWrapper(scrapy.Spider):
         response.url = urljoin(meta['$$url'], response_text)
         response.meta = meta
         try:
-            response.body_stream = urlopen(response.url.replace('\n', ''), timeout=10)
+            response.body_stream = urlopen(self._correct_url(response.url), timeout=10)
         except Exception as e:
             print('Failed to download URL "' + response.url + '" in article "' + meta['$$url'] + '"' + ': ' + str(e))
             self.log_anomaly(meta, 6, None, None, response.url)
@@ -1175,6 +1181,8 @@ class SpiderWrapper(scrapy.Spider):
                         if "reference" in res_conf:
                             status = self._parse_reference_field(res_conf, meta)
                     row = self._remove_metadata_fields(meta)
+                    if 'print_record' in conf and conf.print_record:
+                        print(row)
                     data_guid = None
                     if 'unique' in conf:
                         data_guid = self._get_guid_by_unique_constraint(conf, conf.unique, url, row)
@@ -1193,6 +1201,8 @@ class SpiderWrapper(scrapy.Spider):
                             self._parse_reference_field(res_conf, meta)
 
                 row = self._remove_metadata_fields(meta)
+                if 'print_record' in conf and conf.print_record:
+                    print(row)
                 data_guid = None
                 if 'unique' in conf:
                     data_guid = self._get_guid_by_unique_constraint(conf, conf.unique, url, row)
