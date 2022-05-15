@@ -6,15 +6,15 @@ import re
 import lxml.html
 
 def check_domain(url, meta):
-    results = re.match(r'^https?://([a-zA-Z0-9.]+)', url)
+    results = re.match(r'^https?://([a-zA-Z0-9-.]+)', url)
     if not results:
         print('Invalid URL: ' + url)
         return None
     domain = results.group(1)
-    results = re.search(r'[a-zA-Z0-9]+\.edu$', domain)
+    results = re.search(r'[a-zA-Z0-9-]+\.edu$', domain)
     if results:
         return results.group(0)
-    results = re.search(r'[a-zA-Z0-9]+\.edu\.[a-z]+$', domain)
+    results = re.search(r'[a-zA-Z0-9-]+\.edu\.[a-z]+$', domain)
     if results:
         return results.group(0)
     if domain.startswith('www.'):
@@ -53,7 +53,9 @@ def extract_wiki_body(content, meta):
 
 
 class ScrapyConfig(ScrapyWrapperConfig):
-    file_basedir = 'university_logos/global_new'
+    save_pages = True
+    use_cached_pages = True
+    file_basedir = 'university_logos/global'
     begin_urls = ["https://en.wikipedia.org/wiki/Lists_of_universities_and_colleges_by_country"]
     steps = {
         "begin": {
@@ -93,7 +95,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
         },
         "db": {
             'type': "db",
-            'table_name': "universities_global_new",
+            'table_name': "universities_global",
             'unique': ['name'],
             'upsert': True,
             'print_record': True,

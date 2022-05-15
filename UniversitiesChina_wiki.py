@@ -5,12 +5,12 @@ from scrapywrapper.config import ScrapyWrapperConfig
 import re
 
 def check_domain(url, meta):
-    results = re.match(r'^https?://([a-zA-Z0-9.]+)', url)
+    results = re.match(r'^https?://([a-zA-Z0-9-.]+)', url)
     if not results:
         print('Invalid URL: ' + url)
         return None
     domain = results.group(1)
-    results = re.search(r'[a-zA-Z0-9]+\.edu\.cn$', domain)
+    results = re.search(r'[a-zA-Z0-9-]+\.edu\.cn$', domain)
     if results:
         return results.group(0)
     if domain.startswith('www.'):
