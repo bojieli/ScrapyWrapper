@@ -378,29 +378,25 @@ class SpiderWrapper(scrapy.Spider):
                 #else:
                 #    response_text = HTMLParser().unescape(response_text)
                 doc = lxml.html.fromstring(response_text, parser=utf8_parser)
-                try:
-                    if "strip_tags" in res_conf:
-                        to_strip = res_conf.strip_tags
-                    else:
-                        to_strip = False
-                    if type(res_conf.selector_xpath) is list:
-                        for p in res_conf.selector_xpath:
-                            for m in doc.xpath(p):
-                                try:
-                                    serialize_method = 'text' if to_strip else 'html'
-                                    results.append(lxml.etree.tostring(m, method=serialize_method, encoding='unicode'))
-                                except:
-                                    results.append(self._strip_tags(to_strip, str(m)))
-                    else:
-                        for m in doc.xpath(res_conf.selector_xpath):
+                if "strip_tags" in res_conf:
+                    to_strip = res_conf.strip_tags
+                else:
+                    to_strip = False
+                if type(res_conf.selector_xpath) is list:
+                    for p in res_conf.selector_xpath:
+                        for m in doc.xpath(p):
                             try:
                                 serialize_method = 'text' if to_strip else 'html'
                                 results.append(lxml.etree.tostring(m, method=serialize_method, encoding='unicode'))
                             except:
                                 results.append(self._strip_tags(to_strip, str(m)))
-                except:
-                    print('invalid selector_xpath ' + str(res_conf.selector_xpath))
-                    raise scrapy.exceptions.CloseSpider()
+                else:
+                    for m in doc.xpath(res_conf.selector_xpath):
+                        try:
+                            serialize_method = 'text' if to_strip else 'html'
+                            results.append(lxml.etree.tostring(m, method=serialize_method, encoding='unicode'))
+                        except:
+                            results.append(self._strip_tags(to_strip, str(m)))
                 print('Number of results:' + str(len(results)) + " for xpath: " + res_conf.selector_xpath)
 
             elif "selector_json" in res_conf:
