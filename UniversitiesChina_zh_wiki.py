@@ -82,13 +82,15 @@ class ScrapyConfig(ScrapyWrapperConfig):
                 'download_single_url': True
             }, {
                 'name': 'domain',
-                'selector_xpath': '//table[@class="infobox vcard"]//th[contains(text(), "网站")]/following-sibling::td//a/@href',
-                'data_postprocessor': check_domain
+                'selector_xpath': '//table[@class="infobox vcard"]//a[contains(@class, "external")]/@href',
+                'data_postprocessor': check_domain,
+                'required': True
             }, {
                 'name': 'abbreviation',
                 'selector_xpath': '//div[@id="bodyContent"]',
                 'strip_tags': True,
                 'data_postprocessor': extract_abbrev,
+                'dependencies': ['name']
             }]
         }
     }
