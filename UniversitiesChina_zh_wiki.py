@@ -4,6 +4,12 @@ from scrapywrapper.wrapper import SpiderFactory
 from scrapywrapper.config import ScrapyWrapperConfig
 import re
 
+def extract_name(name, meta):
+    name = re.sub(r'\(.*\)', '', name)
+    name = re.sub(r'\[.*\]', '', name)
+    name = re.sub(r'\{.*\}', '', name)
+    return name.strip()
+
 def check_domain(url, meta):
     results = re.match(r'^https?://([a-zA-Z0-9-.]+)', url)
     if not results:
@@ -73,6 +79,10 @@ class ScrapyConfig(ScrapyWrapperConfig):
             'print_record': True,
             'fields': [{
                 'name': 'name',
+                'selector_xpath': '//table[@class="infobox vcard"]//span[@class="nickname"]',
+                'data_postprocessor': extract_name,
+            }, {
+                'name': 'name_zh',
                 'selector_xpath': '//h1[@id="firstHeading"]',
                 'data_validator': lambda name,_: name.find('大学') != -1 or name.find('学院') != -1,
                 'required': True
@@ -90,7 +100,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
                 'selector_xpath': '//div[@id="bodyContent"]',
                 'strip_tags': True,
                 'data_postprocessor': extract_abbrev,
-                'dependencies': ['name']
+                'dependencies': ['name_zh']
             }]
         }
     }
