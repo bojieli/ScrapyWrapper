@@ -1494,6 +1494,28 @@ class SpiderWrapper(scrapy.Spider):
         for req in self._yield_requests_from_parse_results(response.url, results):
             yield req
 
+    def _consume_response_and_try_load_cached(self, response):
+        for req in self._http_request_callback_nocache(response):
+            if self.config.use_cached_pages:
+                if req.method != 'GET':
+                    yield req
+                    continue
+                data = (req.url, self.config.cache_expire_days)
+                num_rows = self.cursor.execute("SELECT response FROM " + self.config.page_cache_table + " WHERE url = %s AND DATEDIFF(NOW(), time) < %s", data)
+                if num_rows == 0: # not cached
+                    yield req
+                    continue
+                for row in self.cursor:
+                    print('Using cached URL: ' + req.url)
+                    new_response = AttrDict()
+                    new_response.body = row[0]
+                    new_response.meta = req.meta
+                    new_response.url = req.url
+                    for req in self._consume_response_and_try_load_cached(new_response):
+                        yield req
+            else:
+                yield req
+
     def _http_request_callback(self, response):
         self.counter.crawled_webpages += 1
         self.report_status()
@@ -1513,25 +1535,8 @@ class SpiderWrapper(scrapy.Spider):
             except Exception as e:
                 print(e)
 
-        for req in self._http_request_callback_nocache(response):
-            if self.config.use_cached_pages:
-                if req.method != 'GET':
-                    yield req
-                    continue
-                data = (req.url, self.config.cache_expire_days)
-                num_rows = self.cursor.execute("SELECT response FROM " + self.config.page_cache_table + " WHERE url = %s AND DATEDIFF(NOW(), time) < %s", data)
-                if num_rows == 0: # not cached
-                    yield req
-                    continue
-                for row in self.cursor:
-                    print('Using cached URL: ' + req.url)
-                    step_conf = self.config.steps[req.meta['$$step']]
-                    result = [row[0], req.meta['$$step'], req.meta]
-                    response = self._forge_http_response_for_intermediate(step_conf, req.url, result)
-                    for req in self._http_request_callback_nocache(response):
-                        yield req
-            else:
-                yield req
+        for req in self._consume_response_and_try_load_cached(response):
+            yield req
 
     def _get_guid_by_unique_constraint(self, conf, unique, url, row):
         if "guid_field" not in conf:
