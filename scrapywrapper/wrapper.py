@@ -1492,10 +1492,40 @@ class SpiderWrapper(scrapy.Spider):
         self.counter.crawled_webpages += 1
         self.report_status()
         if self.config.save_pages:
-            data = (response.url, response.body)
-            self.cursor.execute("REPLACE INTO " + self.config.page_cache_table + " (url, response) VALUES (%s, %s)", data)
-            self.db.commit()
-        return self._http_request_callback_nocache(response)
+            try:
+                body = response.body.decode('utf-8').encode('utf-8')
+            except:
+                try:
+                    body = response.body.decode('gb2312').encode('utf-8')
+                except:
+                    body = response.body
+            data = (response.url, body)
+            print('saved http request for URL ' + response.url)
+            try:
+                self.cursor.execute("REPLACE INTO " + self.config.page_cache_table + " (url, response) VALUES (%s, %s)", data)
+                self.db.commit()
+            except Exception as e:
+                print(e)
+
+        for req in self._http_request_callback_nocache(response):
+            if self.config.use_cached_pages:
+                if req.method != 'GET':
+                    yield req
+                    continue
+                data = (req.url, self.config.cache_expire_days)
+                num_rows = self.cursor.execute("SELECT response FROM " + self.config.page_cache_table + " WHERE url = %s AND DATEDIFF(NOW(), time) < %s", data)
+                if num_rows == 0: # not cached
+                    yield req
+                    continue
+                for row in self.cursor:
+                    print('Using cached URL: ' + req.url)
+                    step_conf = self.config.steps[req.meta['$$step']]
+                    result = [row[0], req.meta['$$step'], req.meta]
+                    response = self._forge_http_response_for_intermediate(step_conf, req.url, result)
+                    for req in self._http_request_callback_nocache(response):
+                        yield req
+            else:
+                yield req
 
     def _get_guid_by_unique_constraint(self, conf, unique, url, row):
         if "guid_field" not in conf:
@@ -1732,6 +1762,7 @@ class SpiderWrapper(scrapy.Spider):
                 return int(row[0])
         except Exception as e:
             print(e)
+        return 0
 
 
 def SpiderFactory(config, module_name):

@@ -60,6 +60,7 @@ class ScrapyWrapperConfig():
     page_cache_table = 'page_cache'
     save_pages = False
     use_cached_pages = False
+    cache_expire_days = 14
 
     default_guid_field = "ID"
     check_url_exist_before_crawl = False
