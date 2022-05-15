@@ -22,8 +22,10 @@ import types
 import copy
 #from scrapy_webdriver.http import WebdriverRequest
 import os
+import urllib.request
 from urllib.request import urlopen
 from urllib.parse import urlencode, urljoin
+from urllib.error import HTTPError
 import urllib
 from collections import deque
 from scrapy import signals
@@ -41,9 +43,7 @@ class SpiderWrapper(scrapy.Spider):
         self.counter.status = 1
         self.report_status(force=True)
 
-    def start_requests(self):
-        self._check_config()
-        self._init_db()
+    def _init_counters(self):
         self.batch_no = datetime.datetime.now().strftime('%Y%m%d')
         self.__total_records_reported = False
         self.__accumulative_report_counter = 0
@@ -56,6 +56,11 @@ class SpiderWrapper(scrapy.Spider):
             'saved_images': 0,
             'error_count': 0
         })
+
+    def start_requests(self):
+        self._check_config()
+        self._init_db()
+        self._init_counters()
         dispatcher.connect(self.spider_closed, signals.spider_closed)
 
         if callable(self.config.begin_urls):
@@ -217,16 +222,22 @@ class SpiderWrapper(scrapy.Spider):
             c = [ self._to_attr_dict(v) for v in c ]
         return c
 
-    def _check_config(self):
+    def _check_config(self, ignore_steps=False):
         c = self.config
         c.db = AttrDict(c.db)
         c.file_storage = AttrDict(c.file_storage)
         c.file_db_table = AttrDict(c.file_db_table)
         c.url_table = AttrDict(c.url_table)
-        c.steps = self._to_attr_dict(c.steps)
+        if not ignore_steps:
+            c.steps = self._to_attr_dict(c.steps)
         self.reference_cache = {}
         if type(c.status_report_batch) is not int:
             raise "status_report_batch should be an integer"
+
+    def prepare_db(self):
+        self._check_config(ignore_steps=True)
+        self._init_db()
+        self._init_counters()
 
     def _init_db(self):
         if not self.config.db:
@@ -1019,23 +1030,62 @@ class SpiderWrapper(scrapy.Spider):
             return response_text
 
         response = AttrDict()
-        response.url = urljoin(meta['$$url'], response_text)
+        response.url = self._correct_url(urljoin(meta['$$url'], response_text))
         response.meta = meta
-        try:
-            response.body_stream = urlopen(self._correct_url(response.url), timeout=10)
-        except Exception as e:
-            print('Failed to download URL "' + response.url + '" in article "' + meta['$$url'] + '"' + ': ' + str(e))
-            self.log_anomaly(meta, 6, None, None, response.url)
-            return response_text
+
+        retry_count = 0
+        while True:
+            try:
+                request = urllib.request.Request(response.url)
+                if meta['$$url']:
+                    request.add_header('Referer', meta['$$url'])
+                request.add_header('User-Agent', self.config.custom_settings['USER_AGENT'])
+                response.body_stream = urlopen(request, timeout=10)
+                break
+            except HTTPError as e:
+                if e.code == 429:
+                    print('429 RETRY ' + str(retry_count) + ': Failed to download URL "' + response.url + '" in article "' + meta['$$url'] + '"' + ': ' + str(e))
+                    retry_count += 1
+                    if retry_count >= 5:
+                        return response_text
+                else:
+                    print('Failed to download URL "' + response.url + '" in article "' + meta['$$url'] + '"' + ': ' + str(e))
+                    self.log_anomaly(meta, 6, None, None, response.url)
+                    return response_text
+            except Exception as e:
+                print('Failed to download URL "' + response.url + '" in article "' + meta['$$url'] + '"' + ': ' + str(e))
+                self.log_anomaly(meta, 6, None, None, response.url)
+                return response_text
 
         response.headers = {}
         record = self._save_file_record(response)
         if record:
             filepath, _ = record
-            print(filepath)
             return filepath
         else:
             return response_text
+
+    def _internal_download_images_from_db_table(self, table_name, column_name, like_pattern):
+        num_results = self.cursor.execute('SELECT ' + column_name + ' FROM ' + table_name + ' WHERE ' + column_name + " LIKE '" + like_pattern + "'")
+        print('Found ' + str(num_results) + ' urls')
+        urls = []
+        for row in self.cursor:
+            urls.append(row[0])
+        for url in urls:
+            meta = dict()
+            meta['$$url'] = ''
+            filepath = self._download_single_url(url, meta)
+            if url == filepath:
+                print('Failed to download URL: ' + url)
+                continue
+            data = (filepath, url)
+            self.cursor.execute('UPDATE ' + table_name + ' SET ' + column_name + ' = %s WHERE ' + column_name + ' = %s', data)
+            self.db.commit()
+
+    def download_images_from_db_table(self, table_name, column_name):
+        self._internal_download_images_from_db_table(table_name, column_name, '//%')
+        self._internal_download_images_from_db_table(table_name, column_name, 'http://%')
+        self._internal_download_images_from_db_table(table_name, column_name, 'https://%')
 
     def _parse_db_field(self, res_conf, result, meta):
         if "data_preprocessor" in res_conf and callable(res_conf.data_preprocessor):
@@ -1394,7 +1444,7 @@ class SpiderWrapper(scrapy.Spider):
             # the returned result has more metadata
             if step_config.type == "db":
                 if result:
-                    for req in self._http_request_callback(self._forge_http_response_for_intermediate(step_config, url, result)):
+                    for req in self._http_request_callback_nocache(self._forge_http_response_for_intermediate(step_config, url, result)):
                         yield req
             elif step_config.type == "file":
                 yield self._parse_file_record(step_config, url, *result)
@@ -1403,7 +1453,7 @@ class SpiderWrapper(scrapy.Spider):
                     yield req
             elif step_config.type == "intermediate":
                 if result:
-                    for req in self._http_request_callback(self._forge_http_response_for_intermediate(step_config, url, result)):
+                    for req in self._http_request_callback_nocache(self._forge_http_response_for_intermediate(step_config, url, result)):
                         yield req
             else:
                 raise scrapy.exceptions.CloseSpider('undefined step type ' + step.config.type)
@@ -1421,10 +1471,7 @@ class SpiderWrapper(scrapy.Spider):
         except Exception as e:
             print(e)
 
-    def _http_request_callback(self, response):
-        self.counter.crawled_webpages += 1
-        self.report_status()
-
+    def _http_request_callback_nocache(self, response):
         step_conf = self.config.steps[response.meta['$$step']]
         results = []
         if "res" in step_conf:
@@ -1441,6 +1488,14 @@ class SpiderWrapper(scrapy.Spider):
         for req in self._yield_requests_from_parse_results(response.url, results):
             yield req
 
+    def _http_request_callback(self, response):
+        self.counter.crawled_webpages += 1
+        self.report_status()
+        if self.config.save_pages:
+            data = (response.url, response.body)
+            self.cursor.execute("REPLACE INTO " + self.config.page_cache_table + " (url, response) VALUES (%s, %s)", data)
+            self.db.commit()
+        return self._http_request_callback_nocache(response)
 
     def _get_guid_by_unique_constraint(self, conf, unique, url, row):
         if "guid_field" not in conf:

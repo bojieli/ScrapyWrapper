@@ -25,7 +25,7 @@ class ScrapyWrapperConfig():
         #    'service_args': ['--debug=true', '--load-images=false', '--webdriver-loglevel=debug']
         #},
         'TELNETCONSOLE_PORT': None,
-        'USER_AGENT': "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36"
+        'USER_AGENT': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.54 Safari/537.36"
     }
 
     crawlera_apikey = 'c8a6eb2f7cab4450806b9ea73187391a'
@@ -56,6 +56,10 @@ class ScrapyWrapperConfig():
         'url_field': "url",
         'time_field': "update_time"
     }
+
+    page_cache_table = 'page_cache'
+    save_pages = False
+    use_cached_pages = False
 
     default_guid_field = "ID"
     check_url_exist_before_crawl = False
