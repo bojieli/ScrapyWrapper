@@ -58,6 +58,7 @@ class ScrapyWrapperConfig():
     }
 
     page_cache_table = 'page_cache'
+    file_cache_table = 'file_cache'
     save_pages = False
     use_cached_pages = False
     cache_expire_days = 14

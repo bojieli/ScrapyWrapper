@@ -1003,22 +1003,11 @@ class SpiderWrapper(scrapy.Spider):
         except:
             return response_text
 
-        for m in self._get_image_urls_from_doc(doc):
-            response = AttrDict()
-            response.url = urljoin(meta['$$url'], m)
-            response.meta = meta
-            try:
-                response.body_stream = urlopen(self._correct_url(response.url), timeout=10)
-            except Exception as e:
-                print('Failed to download image "' + response.url + '" in article "' + meta['$$url'] + '"' + ': ' + str(e))
-                self.log_anomaly(meta, 6, None, None, response.url)
-                continue
-            response.headers = {}
-            record = self._save_file_record(response)
-            if record:
-                filepath, _ = record
-                image_urls.append((filepath, response.url))
-                response_text = response_text.replace(m, filepath)
+        for url in self._get_image_urls_from_doc(doc):
+            filepath = self._download_single_url(url, meta)
+            if filepath != url:
+                image_urls.append((filepath, url))
+                response_text = response_text.replace(url, filepath)
 
         if '$$image_urls' not in meta:
             meta['$$image_urls'] = []
@@ -1032,6 +1021,16 @@ class SpiderWrapper(scrapy.Spider):
         response = AttrDict()
         response.url = self._correct_url(urljoin(meta['$$url'], response_text))
         response.meta = meta
+        if self.config.use_cached_pages:
+            data = (response.url, self.config.cache_expire_days)
+            num_rows = self.cursor.execute("SELECT filepath FROM " + self.config.file_cache_table + " WHERE url = %s AND DATEDIFF(NOW(), time) < %s", data)
+            for row in self.cursor:
+                filepath = row[0]
+                if os.path.isfile(filepath):
+                    print('Using cached file: ' + filepath + ' for URL: ' + response.url)
+                    return filepath
+                else:
+                    print('Cached file ' + filepath + ' does not exist in local file system, re-downloading for URL: ' + response.url)
 
         retry_count = 0
         while True:
@@ -1359,7 +1358,14 @@ class SpiderWrapper(scrapy.Spider):
             raise scrapy.exceptions.CloseSpider('undefined file record type ' + conf.type)
 
         print("[" + self.name + "] Saved file " + filepath + " (URL: " + response.url + " )")
-        return (filepath, response.url)
+        data = (filepath, response.url)
+        if self.config.save_pages:
+            try:
+                self.cursor.execute("REPLACE INTO " + self.config.file_cache_table + " (filepath, url) VALUES (%s, %s)", data)
+                self.db.commit()
+            except Exception as e:
+                print(e)
+        return data
 
     def _parse_file_record_callback(self, response):
         record = self._save_file_record(response)
