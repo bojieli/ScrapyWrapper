@@ -152,7 +152,9 @@ def to_pinyin_name(name_zh):
     xing = name_list[0].capitalize()
     ming = ""
     for m in name_list[1:]:
-        if m.startswith('a') or m.startswith('e') or m.startswith('o'):
+        if ming == '':
+            ming = m
+        elif m.startswith('a') or m.startswith('e') or m.startswith('o'):
             ming += "'" + m
         else:
             ming += m
