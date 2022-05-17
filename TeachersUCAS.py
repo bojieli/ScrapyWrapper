@@ -37,7 +37,8 @@ def extract_title(text, meta):
     return extract_info(text, meta, -2)
 
 class ScrapyConfig(ScrapyWrapperConfig):
-    #use_http_proxy = False
+    save_pages = True
+    use_saved_pages = True
     file_basedir = 'teacher_images/UCAS'
     begin_urls = ["https://www.ucas.ac.cn/site/77"]
     steps = {
