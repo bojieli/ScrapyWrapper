@@ -1106,14 +1106,17 @@ class SpiderWrapper(scrapy.Spider):
             parsed = str(parsed)
         if "data_validator" in res_conf and callable(res_conf.data_validator):
             if not res_conf.data_validator(parsed, meta):
-                #print('Record parse error: field ' + res_conf.name + ' failed data validator (value "' + parsed + '")')
-                #print('Full record: ' + result)
-                return False
+                if "required" in res_conf and res_conf.required:
+                    print('Record parse error: field ' + res_conf.name + ' failed data validator (value "' + parsed + '")')
+                    print('Full record: ' + result)
+                    return False
+                else:
+                    return True
         if "data_postprocessor" in res_conf and callable(res_conf.data_postprocessor):
             parsed = res_conf.data_postprocessor(parsed, meta)
         if "download_images" in res_conf and res_conf.download_images:
             parsed = self._download_images_from_html(parsed, meta)
-        if "download_single_url" in res_conf and res_conf.download_single_url:
+        if "download_single_url" in res_conf and res_conf.download_single_url and parsed:
             parsed = self._download_single_url(parsed, meta)
         if "required" in res_conf and res_conf.required:
             if parsed == None or len(parsed) == 0:
