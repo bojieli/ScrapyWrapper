@@ -20,6 +20,13 @@ def build_professor_url(text, meta):
     return 'https://rms-api.realmofresearch.com/reviews/' + sha1
 
 class ScrapyConfig(ScrapyWrapperConfig):
+    def __init__(self, *args, **kwargs):
+        super(ScrapyConfig, self).__init__(*args, **kwargs)
+
+        self.custom_settings['DOWNLOAD_DELAY'] = 2
+        self.custom_settings['RETRY_HTTP_CODES'] = [403]
+        self.custom_settings['RETRY_TIMES'] = 100
+
     begin_urls = ["https://rms-api.realmofresearch.com/index/CPdf3hw5jV6y5Xk6lQzt81G46vVA0dRl"]
     steps = {
         "begin": {
@@ -56,6 +63,8 @@ class ScrapyConfig(ScrapyWrapperConfig):
         "db": {
             'type': "db",
             'table_name': "yankong_reviews",
+            'unique': ['sha1'],
+            'upsert': True,
             'fields': [{
                 'name': 'publish_time',
                 'selector_json': 'created_at',
@@ -91,6 +100,10 @@ class ScrapyConfig(ScrapyWrapperConfig):
             }, {
                 'name': 'displayed_author',
                 'selector_json': 'displayed_author',
+            }, {
+                'name': 'sha1',
+                'selector_json': 'sha1',
+                'required': True
             }]
         }
     }
