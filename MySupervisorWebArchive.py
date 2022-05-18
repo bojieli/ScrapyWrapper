@@ -98,20 +98,16 @@ class ScrapyConfig(ScrapyWrapperConfig):
                 'required': True
             }, {
                 'name': 'rating_academic',
-                'selector_xpath': '(//tr[@class="rating_item"])[1]',
-                'required': True
+                'selector_xpath': '(//div[@class="ratings"]//tr[@class="rating_item"])[1]',
             }, {
                 'name': 'rating_financial',
-                'selector_xpath': '(//tr[@class="rating_item"])[2]',
-                'required': True
+                'selector_xpath': '(//div[@class="ratings"]//tr[@class="rating_item"])[2]',
             }, {
                 'name': 'rating_relationship',
-                'selector_xpath': '(//tr[@class="rating_item"])[3]',
-                'required': True
+                'selector_xpath': '(//div[@class="ratings"]//tr[@class="rating_item"])[3]',
             }, {
                 'name': 'rating_prospect',
-                'selector_xpath': '(//tr[@class="rating_item"])[4]',
-                'required': True
+                'selector_xpath': '(//div[@class="ratings"]//tr[@class="rating_item"])[4]',
             }, {
                 'name': 'content',
                 'selector_xpath': '//div[@class="content"]',
