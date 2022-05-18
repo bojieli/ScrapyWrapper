@@ -70,11 +70,8 @@ class ScrapyWrapperConfig():
 
     use_http_proxy = False
     http_proxy_pool = [
-        'http://124.200.102.149:8080',
-        'http://121.69.3.102:8080',
-        'http://221.237.154.58:9999',
-        'http://180.173.116.113:9999',
-        'http://36.36.178.226:8080',
-        'http://27.46.74.29:9999'
+        'http://hwcloud.ring0.me:48526',
+        'http://hwcloud2.ring0.me:48526',
+        'http://conoha2.ring0.me:48526',
     ]
 

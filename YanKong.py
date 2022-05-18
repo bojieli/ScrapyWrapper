@@ -23,10 +23,12 @@ class ScrapyConfig(ScrapyWrapperConfig):
     def __init__(self, *args, **kwargs):
         super(ScrapyConfig, self).__init__(*args, **kwargs)
 
-        self.custom_settings['DOWNLOAD_DELAY'] = 2
-        self.custom_settings['RETRY_HTTP_CODES'] = [403]
-        self.custom_settings['RETRY_TIMES'] = 100
+        self.custom_settings['DOWNLOADER_MIDDLEWARES'] = {
+            'scrapy.downloadermiddlewares.retry.RetryMiddleware': None,
+            'scrapywrapper.middlewares.TooManyRequestsRetryMiddleware': 543
+        }
 
+    use_http_proxy = True
     begin_urls = ["https://rms-api.realmofresearch.com/index/CPdf3hw5jV6y5Xk6lQzt81G46vVA0dRl"]
     steps = {
         "begin": {
