@@ -68,6 +68,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
                 'name': 'name',
                 'selector_xpath': '//a',
                 'strip_tags': True,
+                'data_postprocessor': lambda name,_: name.replace(' ', ''),
                 'required': True
            }]
         }
