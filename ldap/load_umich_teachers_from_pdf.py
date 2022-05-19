@@ -1,4 +1,5 @@
 #/usr/bin/python3
+# use pdftotext to convert PDF to text first
 import sys
 import pymysql
 
