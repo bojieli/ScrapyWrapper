@@ -59,13 +59,14 @@ class ScrapyConfig(ScrapyWrapperConfig):
         },
         'professor': {
             'res': {
+                'selector_json': '',
                 'next_step': 'db'
             }
         },
         "db": {
             'type': "db",
             'table_name': "yankong_reviews",
-            'unique': ['sha1'],
+            'unique': ['yankong_id'],
             'upsert': True,
             'fields': [{
                 'name': 'publish_time',
@@ -105,6 +106,10 @@ class ScrapyConfig(ScrapyWrapperConfig):
             }, {
                 'name': 'sha1',
                 'selector_json': 'sha1',
+                'required': True
+            }, {
+                'name': 'yankong_id',
+                'selector_json': 'id',
                 'required': True
             }]
         }

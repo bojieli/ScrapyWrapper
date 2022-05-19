@@ -24,11 +24,11 @@ def main():
     keys = []
     for row in cursor:
         if is_first:
-            keys = [ k for k in row ]
+            keys = [ k for k in row if k != 'ID' ]
             is_first = False
             writer.writerow(keys)  # write header
     
-        values = [ row[k] for k in keys ]
+        values = [ row[k] for k in keys if k != 'ID' ]
         writer.writerow(values)
         num_records += 1
     
