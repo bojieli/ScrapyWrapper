@@ -7,7 +7,7 @@ from datetime import datetime
 
 def extract_university(text, meta):
     for x in text.split('<'):
-        x = x.strip().replace('_', '')
+        x = x.strip().replace('_', '').replace('\n', '')
         if x.find('University') != -1 or x.find('大学') != -1:
             return x
         if x.find('中科院') != -1:
@@ -19,7 +19,7 @@ def extract_org(text, meta):
     if len(l) <= 3:
         return None
     org = l[-1]
-    return org.strip().replace('_', '')
+    return org.strip().replace('_', '').replace('\n', '')
 
 class ScrapyConfig(ScrapyWrapperConfig):
     begin_urls = ["https://mysupervisor.org/"]
@@ -42,6 +42,7 @@ class ScrapyConfig(ScrapyWrapperConfig):
                 'name': 'school_str',
                 'selector_xpath': '//div[@id="nav-links"]',
                 'strip_tags': True,
+                'data_postprocessor': lambda x,_: x.replace('\n', ''),
                 'required': True
             }, {
                 'name': 'university',
