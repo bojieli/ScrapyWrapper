@@ -9,4 +9,5 @@ selenium
 demjson
 pycurl
 pymysql
+opencv-python
 #https://github.com/sosign/scrapy-webdriver/archive/master.zip

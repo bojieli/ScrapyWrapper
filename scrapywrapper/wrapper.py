@@ -269,8 +269,8 @@ class SpiderWrapper(scrapy.Spider):
                 convertor.ignore_links = True
                 text = convertor.handle(text)
             return text.replace("\\n", "\n").strip()
-        except:
-            print(text)
+        except Exception as e:
+            print(e)
             return text
 
     def _prepare_res_conf(self, res_conf):
@@ -973,14 +973,15 @@ class SpiderWrapper(scrapy.Spider):
         except:
             return None
 
-    def _get_image_urls_from_doc(self, doc):
+    def _get_image_urls_from_doc(self, doc, download_links):
         for m in doc.xpath('//img/@src'):
             yield str(m)
 
-        for m in doc.xpath('//a/@href'):
-            re_m = re.search('\.(jpg|png|gif|bmp|doc|docx|xls|xlsx|ppt|pptx|zip|rar)$', str(m))
-            if re_m:
-                yield str(m)
+        if download_links:
+            for m in doc.xpath('//a/@href'):
+                re_m = re.search('\.(jpg|png|gif|bmp|doc|docx|xls|xlsx|ppt|pptx|zip|rar)$', str(m))
+                if re_m:
+                    yield str(m)
 
     def _correct_url(self, url):
         url = url.replace('\n', '').replace('\r', '')
@@ -988,7 +989,7 @@ class SpiderWrapper(scrapy.Spider):
             url = 'http:' + url
         return url
 
-    def _download_images_from_html(self, response_text, meta):
+    def _download_images_or_files_from_html(self, response_text, meta, download_links=False):
         if not response_text:
             return response_text
 
@@ -999,7 +1000,7 @@ class SpiderWrapper(scrapy.Spider):
         except:
             return response_text
 
-        for url in self._get_image_urls_from_doc(doc):
+        for url in self._get_image_urls_from_doc(doc, download_links):
             filepath = self._download_single_url(url, meta)
             if filepath != url:
                 image_urls.append((filepath, url))
@@ -1010,6 +1011,12 @@ class SpiderWrapper(scrapy.Spider):
         meta['$$image_urls'].extend(image_urls)
         return response_text
     
+    def _download_images_from_html(self, response_text, meta):
+        return self._download_images_or_files_from_html(response_text, meta, download_links=False)
+
+    def _download_files_from_html(self, response_text, meta):
+        return self._download_images_or_files_from_html(response_text, meta, download_links=True)
+
     def _download_single_url(self, response_text, meta):
         if not response_text:
             return response_text
@@ -1116,6 +1123,30 @@ class SpiderWrapper(scrapy.Spider):
             parsed = res_conf.data_postprocessor(parsed, meta)
         if "download_images" in res_conf and res_conf.download_images:
             parsed = self._download_images_from_html(parsed, meta)
+        if "download_files" in res_conf and res_conf.download_files:
+            parsed = self._download_files_from_html(parsed, meta)
+        if "download_single_url" in res_conf and res_conf.download_single_url and parsed:
+            parsed = self._download_single_url(parsed, meta)
+        if "post_download_processor" in res_conf and callable(res_conf.post_download_processor):
+            parsed = res_conf.post_download_processor(parsed, meta)
+        if "required" in res_conf and res_conf.required:
+            if parsed == None or len(parsed) == 0:
+                if not "mute_warnings" in res_conf:
+                    print('Record parse error: required field ' + res_conf.name + ' does not exist')
+                    print('Full record: ')
+                    try:
+                        print(repr(result)[:1000])
+                    except:
+                        print(result.encode('utf-8')[:1000])
+                    self.counter.error_count += 1
+                    self.report_status(force=True)
+                    self.log_anomaly(meta, 1, res_conf.name, None, str(res_conf))
+                return False
+        meta[res_conf.name] = parsed
+        return True
+
+    def _order_fields_by_dependency(self, confs):
+        dep_graph = {}
         if "download_single_url" in res_conf and res_conf.download_single_url and parsed:
             parsed = self._download_single_url(parsed, meta)
         if "required" in res_conf and res_conf.required:
@@ -1126,7 +1157,7 @@ class SpiderWrapper(scrapy.Spider):
                     try:
                         print(repr(result)[:1000])
                     except:
-                        print(result.encode('utf-8')[:10000])
+                        print(result.encode('utf-8')[:1000])
                     self.counter.error_count += 1
                     self.report_status(force=True)
                     self.log_anomaly(meta, 1, res_conf.name, None, str(res_conf))
@@ -1201,7 +1232,7 @@ class SpiderWrapper(scrapy.Spider):
                         ref_val = ','.join(meta[res_conf.reference.fields])
                     print('Record parse error: required reference field ' + res_conf.name + ' not matched (value "' + ref_val.encode('utf-8') + '")')
                     print('Full record: ')
-                    print(result.encode('utf-8')[:10000])
+                    print(result.encode('utf-8')[:1000])
                     self.counter.error_count += 1
                     self.report_status(force=True)
                     self.log_anomaly(meta, 2, res_conf.name, ref_val, str(res_conf))
