@@ -1080,8 +1080,12 @@ class SpiderWrapper(scrapy.Spider):
                 print('Failed to download URL: ' + url)
                 continue
             data = (filepath, url)
-            self.cursor.execute('UPDATE ' + table_name + ' SET ' + column_name + ' = %s WHERE ' + column_name + ' = %s', data)
-            self.db.commit()
+            try:
+                self.db.ping(reconnect=True)
+                self.cursor.execute('UPDATE ' + table_name + ' SET ' + column_name + ' = %s WHERE ' + column_name + ' = %s', data)
+                self.db.commit()
+            except Exception as e:
+                print('Failed to update download images table: ' + str(e))
 
     def download_images_from_db_table(self, table_name, column_name):
         self._internal_download_images_from_db_table(table_name, column_name, '//%')
@@ -1390,6 +1394,7 @@ class SpiderWrapper(scrapy.Spider):
         data = (filepath, response.url)
         if self.config.save_pages:
             try:
+                self.db.ping(reconnect=True)
                 self.cursor.execute("REPLACE INTO " + self.config.file_cache_table + " (filepath, url) VALUES (%s, %s)", data)
                 self.db.commit()
             except Exception as e:
@@ -1559,6 +1564,7 @@ class SpiderWrapper(scrapy.Spider):
             data = (response.url, body)
             print('saved http request for URL ' + response.url)
             try:
+                self.db.ping(reconnect=True)
                 self.cursor.execute("REPLACE INTO " + self.config.page_cache_table + " (url, response) VALUES (%s, %s)", data)
                 self.db.commit()
             except Exception as e:
@@ -1652,6 +1658,7 @@ class SpiderWrapper(scrapy.Spider):
         update_data = [ row[field] if field in row else '' for field in row ]
         try:
             SQL = "UPDATE " + conf.table_name + " SET " + ','.join(update_fields) + " WHERE " + conf.guid_field + " = %s"
+            self.db.ping(reconnect=True)
             self.cursor.execute(SQL, tuple(update_data + [guid]))
             self.db.commit()
         except Exception as e:
@@ -1770,9 +1777,14 @@ class SpiderWrapper(scrapy.Spider):
         for pk_field in pk_fields:
             values.append(row[pk_field])
         sql = "UPDATE " + table_name + " SET " + ",".join([f + " = %s" for f in fields]) + " WHERE " + " AND ".join([pk_field + " = %s" for pk_field in pk_fields])
-        self.cursor.execute(sql, tuple(values))
-        self.db.commit()
-        
+        try:
+            self.db.ping(reconnect=True)
+            self.cursor.execute(sql, tuple(values))
+            self.db.commit()
+        except Exception as e:
+            print('Update database row failed: ' + str(e))
+            print(sql)
+            print(values)
 
     def insert_row(self, table_name, row):
         fields = [k for k in row]
@@ -1784,10 +1796,11 @@ class SpiderWrapper(scrapy.Spider):
         sql = "INSERT INTO " + table_name + " (" + ",".join(fields) + ") VALUES " + ",".join([ "(" + ",".join(value_types) + ")" for row in table_data ])
         data = tuple([item for sublist in table_data for item in sublist])
         try:
+            self.db.ping(reconnect=True)
             self.cursor.execute(sql, data)
             self.db.commit()
         except Exception as e:
-            print('Insert many into database failed:' + str(e))
+            print('Insert many into database failed: ' + str(e))
             print(sql)
             print(data)
 
