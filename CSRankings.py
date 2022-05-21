@@ -33,14 +33,18 @@ def is_human_face(image_path, cascasdepath="haarcascade_frontalface_default.xml"
     if h >= w * 2 or w >= h * 2:  # aspect ratio does not look like a face
         return False
 
+    min_face_pixels = int(max(30, h / 10, w / 10))
+
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     face_cascade = cv2.CascadeClassifier(cascasdepath)
     faces = face_cascade.detectMultiScale(
         gray,
         scaleFactor = 1.2,
         minNeighbors = 5,
-        minSize = (30,30)
+        minSize = (min_face_pixels, min_face_pixels)
         )
+    if len(faces) > 1:
+        print('Multiple (' + str(len(faces)) + ') faces detected in ' + image_path)
     return len(faces) == 1
 
 def find_human_faces(html, meta):
