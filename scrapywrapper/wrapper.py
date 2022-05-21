@@ -265,12 +265,11 @@ class SpiderWrapper(scrapy.Spider):
     def _strip_tags(self, to_strip, text):
         try:
             if to_strip:
-                convertor = html2text.HTML2Text()
-                convertor.ignore_links = True
-                text = convertor.handle(text)
+                doc = lxml.html.fromstring(text, parser=utf8_parser)
+                text = lxml.etree.tostring(doc, method='text', encoding='unicode')
             return text.replace("\\n", "\n").strip()
         except Exception as e:
-            print(e)
+            print('Failed to strip tags: ' + str(e))
             return text
 
     def _prepare_res_conf(self, res_conf):
@@ -1394,7 +1393,7 @@ class SpiderWrapper(scrapy.Spider):
                 self.cursor.execute("REPLACE INTO " + self.config.file_cache_table + " (filepath, url) VALUES (%s, %s)", data)
                 self.db.commit()
             except Exception as e:
-                print(e)
+                print('REPLACE INTO DB failed: ' + str(e))
         return data
 
     def _parse_file_record_callback(self, response):
@@ -1505,7 +1504,7 @@ class SpiderWrapper(scrapy.Spider):
             status_req = urlopen('http://127.0.0.1:8080/task/' + self.name + '/update_status', urlencode(self.counter), timeout=10)
             threading.Thread(target=status_req.read).start()
         except Exception as e:
-            print(e)
+            print('Report status failed: ' + str(e))
 
     def _http_request_callback_nocache(self, response):
         step_conf = self.config.steps[response.meta['$$step']]
@@ -1563,7 +1562,7 @@ class SpiderWrapper(scrapy.Spider):
                 self.cursor.execute("REPLACE INTO " + self.config.page_cache_table + " (url, response) VALUES (%s, %s)", data)
                 self.db.commit()
             except Exception as e:
-                print(e)
+                print('Save HTTP request to DB failed: ' + str(e))
 
         for req in self._consume_response_and_try_load_cached(response):
             yield req
@@ -1788,7 +1787,7 @@ class SpiderWrapper(scrapy.Spider):
             self.cursor.execute(sql, data)
             self.db.commit()
         except Exception as e:
-            print(e)
+            print('Insert many into database failed:' + str(e))
             print(sql)
             print(data)
 
@@ -1802,7 +1801,7 @@ class SpiderWrapper(scrapy.Spider):
                 print('Total records in table ' + table_name + ' : ' + str(row[0]))
                 return int(row[0])
         except Exception as e:
-            print(e)
+            print('Get total records failed: ' + str(e))
         return 0
 
 
