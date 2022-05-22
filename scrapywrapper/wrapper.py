@@ -1499,6 +1499,8 @@ class SpiderWrapper(scrapy.Spider):
                 raise scrapy.exceptions.CloseSpider('undefined step type ' + step.config.type)
 
     def report_status(self, force=False):
+        return  #disabled now
+
         self.__accumulative_report_counter += 1
         if not force and self.__accumulative_report_counter < self.config.status_report_batch:
             return
@@ -1553,7 +1555,7 @@ class SpiderWrapper(scrapy.Spider):
     def _http_request_callback(self, response):
         self.counter.crawled_webpages += 1
         self.report_status()
-        if self.config.save_pages:
+        if self.config.save_pages and response.request.method == 'GET':
             try:
                 body = response.body.decode('utf-8').encode('utf-8')
             except:
