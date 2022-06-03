@@ -1575,14 +1575,34 @@ class SpiderWrapper(scrapy.Spider):
         for req in self._consume_response_and_try_load_cached(response):
             yield req
 
+    def _create_table_on_first_row(self, conf, fields):
+        if hasattr(self, 'table_exists'):
+            return
+        if "guid_field" not in conf:
+            conf.guid_field = self.config.default_guid_field
+        sql = 'CREATE TABLE IF NOT EXISTS ' + conf.table_name + '(' + conf.guid_field + ' VARCHAR(50) NOT NULL PRIMARY KEY'
+        for field in fields:
+            sql += ', ' + field + ' TEXT'
+        sql += ')'
+        try:
+            self.cursor.execute(sql)
+            self.db.commit()
+        except Exception as e:
+            print('create table failed: ' + str(e))
+            print(sql)
+        self.table_exists = True
+
     def _get_guid_by_unique_constraint(self, conf, unique, url, row):
         if "guid_field" not in conf:
             conf.guid_field = self.config.default_guid_field
         constraint_fields = [ field + ' = %s' for field in unique ]
         constraint_data = [ row[field] if field in row else '' for field in unique ]
-        self.cursor.execute("SELECT " + conf.guid_field + " FROM " + conf.table_name + " WHERE " + ' AND '.join(constraint_fields), tuple(constraint_data))
-        for row in self.cursor:
-            return row[0]
+        try:
+            self.cursor.execute("SELECT " + conf.guid_field + " FROM " + conf.table_name + " WHERE " + ' AND '.join(constraint_fields), tuple(constraint_data))
+            for row in self.cursor:
+                return row[0]
+        except:
+            self._create_table_on_first_row(conf, [ field for field in row ])
         return None
         
     def _insert_url_table(self, conf, data_guid, url, action="Inserted"):
